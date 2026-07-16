@@ -1,8 +1,7 @@
-
-
-
+// Server web finto per non far spegnere Render (Piano Free)
 const http = require('http');
-http.createServer((req, res) => res.end('Bot Online!')).listen(process.env.PORT || 3000);
+http.createServer((req, res) => res.end('Scudo Online!')).listen(process.env.PORT || 3000);
+
 const { Client, GatewayIntentBits, PermissionsBitField } = require('discord.js');
 
 const client = new Client({ 
@@ -14,24 +13,22 @@ const client = new Client({
     ] 
 });
 
-// I tuoi dati configurati
-const TOKEN = 'MTUyNzI2NzE1ODI2NDkwOTgyNA.GSH--r.9LnffpkL5c-RZOnuTyiNMQaaZxS9nGVrTg6XmY'; 
-const OWNER_ID = '1241667310771769408'; 
+// LEGGE IL TOKEN IN SICUREZZA DAL PANNELLO DI RENDER
+const TOKEN = process.env.DISCORD_TOKEN; 
+const OWNER_ID = '1241667310771769408'; // Il tuo ID Utente fisso
 
-// Configurazione della soglia Anti-Raid
-const SOGLIA_MESSAGGI = 5;       // Massimo 5 messaggi consentiti...
-const SOGLIA_TEMPO = 3000;       // ...in 3 secondi (3000 ms)
+const SOGLIA_MESSAGGI = 5;       
+const SOGLIA_TEMPO = 3000;       
 const messaggiRecenti = new Map(); 
 let serverBloccato = false;      
 
 client.once('ready', () => {
-    console.log(`🛡️ Sistema Anti-Raid Automatico Online come ${client.user.tag}!`);
+    console.log(`🛡️ Sistema Anti-Raid Cloud Online come ${client.user.tag}!`);
 });
 
 client.on('messageCreate', async (message) => {
     if (message.author.bot || !message.guild) return;
 
-    // Comando di sblocco manuale
     if (message.content === '!unlock') {
         if (message.author.id !== OWNER_ID) return;
         serverBloccato = false;
@@ -43,7 +40,6 @@ client.on('messageCreate', async (message) => {
 
     if (serverBloccato) return;
 
-    // Logica anti-spam automatica
     const utenteId = message.author.id;
     const oraAttuale = Date.now();
 
@@ -61,10 +57,9 @@ client.on('messageCreate', async (message) => {
         if (message.member.permissions.has(PermissionsBitField.Flags.Administrator)) return;
 
         serverBloccato = true; 
-        
-        await message.channel.send(`🚨 **RILEVATO ATTACCO SPAM DA <@${utenteId}>!** 🚨\nAttivazione Lockdown automatico di emergenza in corso...`);
+        await message.channel.send(`🚨 **RILEVATO ATTACCO SPAM DA <@${utenteId}>!** 🚨\nLockdown automatico in corso...`);
         await toggleServerLockdown(message.guild, true);
-        await message.channel.send('🔒 **Server Blindato Automaticamente.** Tutti i canali testuali sono stati chiusi per sicurezza.');
+        await message.channel.send('🔒 **Server Blindato.** Tutte le chat sono chiuse.');
     }
 });
 
@@ -82,9 +77,7 @@ async function toggleServerLockdown(guild, lockStatus) {
         if (channel.isTextBased() && !channel.isThread()) {
             try {
                 await channel.permissionOverwrites.edit(everyoneRole, permissionsToModify);
-            } catch (error) {
-                // Canale ignorato se mancano i permessi di gestione
-            }
+            } catch (error) {}
         }
     }
 }
