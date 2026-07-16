@@ -15,7 +15,7 @@ const client = new Client({
 });
 
 // I tuoi dati configurati
-const TOKEN = 'MTUyNzI2NzE1ODI2NDkwOTgyNA.GHydr-.WIDoYYTJ45nNACArNBm4WL5BgLaCDyQY5epmgo'; 
+const TOKEN = 'MTUyNzI2NzE1ODI2NDkwOTgyNA.GSH--r.9LnffpkL5c-RZOnuTyiNMQaaZxS9nGVrTg6XmY'; 
 const OWNER_ID = '1241667310771769408'; 
 
 // Configurazione della soglia Anti-Raid
