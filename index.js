@@ -1,3 +1,8 @@
+
+
+
+const http = require('http');
+http.createServer((req, res) => res.end('Bot Online!')).listen(process.env.PORT || 3000);
 const { Client, GatewayIntentBits, PermissionsBitField } = require('discord.js');
 
 const client = new Client({ 
