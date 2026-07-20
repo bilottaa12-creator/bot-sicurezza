@@ -27,10 +27,16 @@ client.once('ready', () => {
 });
 
 client.on('messageCreate', async (message) => {
+    // Ignora messaggi dai bot (evita che altri bot attivino l'anti-spam) e messaggi privati
     if (message.author.bot || !message.guild) return;
 
-    if (message.content === '!unlock') {
-        if (message.author.id !== OWNER_ID) return;
+    // NUOVO COMANDO DI UNLOCK PERSONALIZZATO
+    if (message.content.trim() === '!scudo-unlock') {
+        if (message.author.id !== OWNER_ID) {
+            await message.reply('❌ Solo il proprietario dello Scudo può usare questo comando.');
+            return;
+        }
+        
         serverBloccato = false;
         await message.reply('🔓 **REVOCA LOCKDOWN IN CORSO...**');
         await toggleServerLockdown(message.guild, false);
@@ -38,6 +44,7 @@ client.on('messageCreate', async (message) => {
         return;
     }
 
+    // Se il server è già in lockdown, blocca la verifica dello spam
     if (serverBloccato) return;
 
     const utenteId = message.author.id;
@@ -54,12 +61,13 @@ client.on('messageCreate', async (message) => {
     messaggiRecenti.set(utenteId, messaggiRecentiFiltrati);
 
     if (messaggiRecentiFiltrati.length > SOGLIA_MESSAGGI) {
-        if (message.member.permissions.has(PermissionsBitField.Flags.Administrator)) return;
+        // Se chi spamma è un admin del server, lo ignora
+        if (message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator)) return;
 
         serverBloccato = true; 
         await message.channel.send(`🚨 **RILEVATO ATTACCO SPAM DA <@${utenteId}>!** 🚨\nLockdown automatico in corso...`);
         await toggleServerLockdown(message.guild, true);
-        await message.channel.send('🔒 **Server Blindato.** Tutte le chat sono chiuse.');
+        await message.channel.send('🔒 **Server Blindato.** Tutte le chat sono chiuse. Usa `!scudo-unlock` per riaprire.');
     }
 });
 
@@ -72,13 +80,19 @@ async function toggleServerLockdown(guild, lockStatus) {
         AddReactions: !lockStatus
     };
 
-    const channels = await guild.channels.fetch();
-    for (const [channelId, channel] of channels) {
-        if (channel.isTextBased() && !channel.isThread()) {
-            try {
-                await channel.permissionOverwrites.edit(everyoneRole, permissionsToModify);
-            } catch (error) {}
+    try {
+        const channels = await guild.channels.fetch();
+        for (const [channelId, channel] of channels) {
+            if (channel && channel.isTextBased() && !channel.isThread()) {
+                try {
+                    await channel.permissionOverwrites.edit(everyoneRole, permissionsToModify);
+                } catch (err) {
+                    console.error(`[ERRORE PERMESSI] Impossibile modificare il canale ${channel.name}:`, err.message);
+                }
+            }
         }
+    } catch (error) {
+        console.error('[ERRORE GENERALE LOCKDOWN]:', error);
     }
 }
 
