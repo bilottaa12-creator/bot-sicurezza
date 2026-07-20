@@ -1,4 +1,4 @@
-// Server HTTP per far capire a Render che il servizio è attivo
+// Server HTTP per mantenere attivo il servizio su Render
 const http = require('http');
 http.createServer((req, res) => res.end('Scudo Anti-Raid Online!')).listen(process.env.PORT || 3000);
 
@@ -27,10 +27,16 @@ client.once('ready', () => {
 client.on('messageCreate', async (message) => {
     if (message.author.bot || !message.guild) return;
 
-    // COMANDO UNLOCK: Funziona per qualsiasi Amministratore del server
+    // COMANDO UNLOCK: Abilitato per Amministratori e Moderatori
     if (message.content.trim() === '!scudo-unlock') {
-        if (!message.member || !message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-            await message.reply('❌ Solo gli Amministratori possono sbloccare il server.');
+        // Verifica se l'utente ha i permessi di Amministratore O di Gestione Canali (tipico dei Moderatori)
+        const haPermessi = message.member && (
+            message.member.permissions.has(PermissionsBitField.Flags.Administrator) ||
+            message.member.permissions.has(PermissionsBitField.Flags.ManageChannels)
+        );
+
+        if (!haPermessi) {
+            await message.reply('❌ Devi essere un Amministratore o un Moderatore con il permesso di gestire i canali per usare questo comando.');
             return;
         }
         
@@ -57,7 +63,12 @@ client.on('messageCreate', async (message) => {
     messaggiRecenti.set(utenteId, messaggiRecentiFiltrati);
 
     if (messaggiRecentiFiltrati.length > SOGLIA_MESSAGGI) {
-        if (message.member && message.member.permissions.has(PermissionsBitField.Flags.Administrator)) return;
+        // Gli admin/mod con gestione canali non attivano l'anti-spam
+        const haPermessi = message.member && (
+            message.member.permissions.has(PermissionsBitField.Flags.Administrator) ||
+            message.member.permissions.has(PermissionsBitField.Flags.ManageChannels)
+        );
+        if (haPermessi) return;
 
         serverBloccato = true; 
         await message.channel.send(`🚨 **RILEVATO SPAM DA <@${utenteId}>!**\nLockdown automatico in corso...`);
