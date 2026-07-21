@@ -1,4 +1,4 @@
-// Server HTTP per mantenere attivo il servizio su Render
+// Server HTTP per mantenere attivo il servizio su Render (evita lo sleep)
 const http = require('http');
 http.createServer((req, res) => res.end('Scudo Anti-Raid Online!')).listen(process.env.PORT || 3000);
 
@@ -24,19 +24,21 @@ client.once('ready', () => {
     console.log(`🛡️ Sistema Anti-Raid Cloud Online come ${client.user.tag}!`);
 });
 
+// Funzione per verificare se un utente ha permessi Admin o il ruolo Mod
+function eModeratoreOAdmin(member) {
+    if (!member) return false;
+    const haPermessoAdmin = member.permissions.has(PermissionsBitField.Flags.Administrator);
+    const haRuoloMod = member.roles.cache.some(role => role.name.toLowerCase().includes('mod'));
+    return haPermessoAdmin || haRuoloMod;
+}
+
 client.on('messageCreate', async (message) => {
     if (message.author.bot || !message.guild) return;
 
     // COMANDO UNLOCK: Abilitato per Amministratori e Moderatori
     if (message.content.trim() === '!scudo-unlock') {
-        // Verifica se l'utente ha i permessi di Amministratore O di Gestione Canali (tipico dei Moderatori)
-        const haPermessi = message.member && (
-            message.member.permissions.has(PermissionsBitField.Flags.Administrator) ||
-            message.member.permissions.has(PermissionsBitField.Flags.ManageChannels)
-        );
-
-        if (!haPermessi) {
-            await message.reply('❌ Devi essere un Amministratore o un Moderatore con il permesso di gestire i canali per usare questo comando.');
+        if (!eModeratoreOAdmin(message.member)) {
+            await message.reply('❌ Solo i Moderatori e gli Amministratori possono sbloccare il server.');
             return;
         }
         
@@ -63,12 +65,8 @@ client.on('messageCreate', async (message) => {
     messaggiRecenti.set(utenteId, messaggiRecentiFiltrati);
 
     if (messaggiRecentiFiltrati.length > SOGLIA_MESSAGGI) {
-        // Gli admin/mod con gestione canali non attivano l'anti-spam
-        const haPermessi = message.member && (
-            message.member.permissions.has(PermissionsBitField.Flags.Administrator) ||
-            message.member.permissions.has(PermissionsBitField.Flags.ManageChannels)
-        );
-        if (haPermessi) return;
+        // I mod e gli admin non attivano lo spam
+        if (eModeratoreOAdmin(message.member)) return;
 
         serverBloccato = true; 
         await message.channel.send(`🚨 **RILEVATO SPAM DA <@${utenteId}>!**\nLockdown automatico in corso...`);
@@ -77,21 +75,36 @@ client.on('messageCreate', async (message) => {
     }
 });
 
+// Funzione avanzata per applicare o revocare il Lockdown a tutti i ruoli
 async function toggleServerLockdown(guild, lockStatus) {
-    const everyoneRole = guild.roles.everyone;
-    const permissionsToModify = {
-        SendMessages: !lockStatus,
-        SendMessagesInThreads: !lockStatus,
-        ReadMessageHistory: !lockStatus,
-        AddReactions: !lockStatus
-    };
-
     try {
         const channels = await guild.channels.fetch();
+        const roles = await guild.roles.fetch();
+
         for (const [channelId, channel] of channels) {
             if (channel && channel.isTextBased() && !channel.isThread()) {
                 try {
-                    await channel.permissionOverwrites.edit(everyoneRole, permissionsToModify);
+                    // 1. Modifica il ruolo base @everyone
+                    await channel.permissionOverwrites.edit(guild.roles.everyone, {
+                        SendMessages: !lockStatus,
+                        SendMessagesInThreads: !lockStatus,
+                        AddReactions: !lockStatus
+                    });
+
+                    // 2. Modifica tutti i ruoli specifici (es. membro, verificato, ecc.)
+                    for (const [roleId, role] of roles) {
+                        const eModOAdmin = role.permissions.has(PermissionsBitField.Flags.Administrator) ||
+                                           role.name.toLowerCase().includes('mod');
+
+                        // Ignora il ruolo @everyone, i bot e i ruoli con permessi Mod/Admin
+                        if (!role.managed && role.id !== guild.roles.everyone.id && !eModOAdmin) {
+                            await channel.permissionOverwrites.edit(role, {
+                                SendMessages: lockStatus ? false : null,
+                                SendMessagesInThreads: lockStatus ? false : null,
+                                AddReactions: lockStatus ? false : null
+                            });
+                        }
+                    }
                 } catch (err) {
                     console.error(`[ERRORE PERMESSI] Canale ${channel.name}:`, err.message);
                 }
