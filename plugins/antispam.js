@@ -1,7 +1,7 @@
 const { eModeratoreOAdmin } = require('../utils');
 
 // ---- CONFIGURAZIONE (modifica questi valori a piacere) ----
-const SOGLIA_MESSAGGI = 5;        // quanti messaggi...
+const SOGLIA_MESSAGGI = 10;        // quanti messaggi...
 const FINESTRA_MS = 4000;         // ...in quanti millisecondi = spam
 const DURATA_TIMEOUT_MIN = 10;    // minuti di timeout (mute) per chi spamma
 const RIPETIZIONE_MAX = 3;        // messaggi identici di fila = spam anche sotto soglia
