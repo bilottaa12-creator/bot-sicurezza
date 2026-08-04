@@ -1,10 +1,10 @@
 const { eModeratoreOAdmin, inviaLogSicurezza } = require('../utils');
 
 // ---- CONFIGURAZIONE (modifica questi valori a piacere) ----
-const SOGLIA_MESSAGGI = 5;        // quanti messaggi...
-const FINESTRA_MS = 4000;         // ...in quanti millisecondi = spam
-const DURATA_TIMEOUT_MIN = 10;    // minuti di timeout (mute) per chi spamma
-const RIPETIZIONE_MAX = 3;        // messaggi identici di fila = spam anche sotto soglia
+const SOGLIA_MESSAGGI = 8;        // quanti messaggi...
+const FINESTRA_MS = 5000;         // ...in quanti millisecondi = spam
+const DURATA_TIMEOUT_MIN = 5;    // minuti di timeout (mute) per chi spamma
+const RIPETIZIONE_MAX = 4;        // messaggi identici di fila = spam anche sotto soglia
 
 module.exports = {
     name: 'antispam',
