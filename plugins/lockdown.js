@@ -1,42 +1,49 @@
-const { PermissionOverwrites } = require('discord.js');
 const { eModeratoreOAdmin, inviaLogSicurezza } = require('../utils');
 
 async function salvaSnapshot(guild, store) {
+    // Salva lo stato ATTUALE di TUTTI i canali testuali
     try {
         const channels = await guild.channels.fetch();
         const snapshot = {};
         for (const [channelId, channel] of channels) {
             if (channel && channel.isTextBased() && !channel.isThread()) {
-                const override = channel.permissionOverwrites.get(guild.roles.everyone.id);
+                const override = channel.permissionOverwrites.resolve(guild.roles.everyone);
                 snapshot[channelId] = {
                     name: channel.name,
-                    override: override ? {
-                        allow: override.allow.toJSON(),
-                        deny: override.deny.toJSON()
-                    } : null
+                    SendMessages: override?.allow.has('SendMessages') ? true : override?.deny.has('SendMessages') ? false : null,
+                    SendMessagesInThreads: override?.allow.has('SendMessagesInThreads') ? true : override?.deny.has('SendMessagesInThreads') ? false : null,
+                    AddReactions: override?.allow.has('AddReactions') ? true : override?.deny.has('AddReactions') ? false : null,
+                    hasOverride: override !== null // Ricorda se il canale aveva un override specifico
                 };
             }
         }
         store.lockdownSnapshot = snapshot;
-        console.log('[LOCKDOWN] Snapshot salvato:', Object.keys(snapshot).length, 'canali');
     } catch (error) {
         console.error('[ERRORE SNAPSHOT]:', error);
     }
 }
 
-async function bloccareTuttiCanali(guild) {
+async function bloccareCanaليPublbici(guild, store) {
+    // Chiude SOLO i canali pubblici (quelli senza override specifico su @everyone)
+    // I canali privati/con override rimangono come sono
     try {
+        if (!store.lockdownSnapshot) return;
+        
         const channels = await guild.channels.fetch();
         for (const [channelId, channel] of channels) {
             if (channel && channel.isTextBased() && !channel.isThread()) {
-                try {
-                    await channel.permissionOverwrites.edit(guild.roles.everyone, {
-                        SendMessages: false,
-                        SendMessagesInThreads: false,
-                        AddReactions: false
-                    });
-                } catch (err) {
-                    console.error(`[ERRORE PERMESSI] Canale ${channel.name}:`, err.message);
+                const statoSalvato = store.lockdownSnapshot[channelId];
+                // Chiudi solo se il canale era pubblico (senza override specifico)
+                if (statoSalvato && !statoSalvato.hasOverride) {
+                    try {
+                        await channel.permissionOverwrites.edit(guild.roles.everyone, {
+                            SendMessages: false,
+                            SendMessagesInThreads: false,
+                            AddReactions: false
+                        });
+                    } catch (err) {
+                        console.error(`[ERRORE PERMESSI] Canale ${channel.name}:`, err.message);
+                    }
                 }
             }
         }
@@ -46,10 +53,8 @@ async function bloccareTuttiCanali(guild) {
 }
 
 async function ripristinareDaSnapshot(guild, store) {
-    if (!store.lockdownSnapshot) {
-        console.log('[LOCKDOWN] Nessuno snapshot da ripristinare');
-        return;
-    }
+    // Ripristina TUTTI i canali al loro stato originale (prima del lockdown)
+    if (!store.lockdownSnapshot) return;
 
     try {
         const channels = await guild.channels.fetch();
@@ -58,19 +63,11 @@ async function ripristinareDaSnapshot(guild, store) {
                 try {
                     const stato = store.lockdownSnapshot[channelId];
                     if (stato) {
-                        if (stato.override) {
-                            // Ripristina esattamente i permessi salvati
-                            await channel.permissionOverwrites.edit(guild.roles.everyone, {
-                                allow: stato.override.allow,
-                                deny: stato.override.deny
-                            });
-                        } else {
-                            // Il canale non aveva override: rimuovilo completamente
-                            const override = channel.permissionOverwrites.get(guild.roles.everyone.id);
-                            if (override) {
-                                await override.delete();
-                            }
-                        }
+                        await channel.permissionOverwrites.edit(guild.roles.everyone, {
+                            SendMessages: stato.SendMessages,
+                            SendMessagesInThreads: stato.SendMessagesInThreads,
+                            AddReactions: stato.AddReactions
+                        });
                     }
                 } catch (err) {
                     console.error(`[ERRORE RIPRISTINO] Canale ${channel.name}:`, err.message);
@@ -78,7 +75,6 @@ async function ripristinareDaSnapshot(guild, store) {
             }
         }
         store.lockdownSnapshot = null;
-        console.log('[LOCKDOWN] Stato ripristinato');
     } catch (error) {
         console.error('[ERRORE RIPRISTINO]:', error);
     }
@@ -91,6 +87,7 @@ module.exports = {
         const { store } = ctx;
         if (store.serverBloccato === undefined) store.serverBloccato = false;
 
+        // COMANDO LOCK MANUALE
         if (message.content.trim() === '!scudo-lock') {
             if (!eModeratoreOAdmin(message.member)) {
                 await message.reply('❌ Solo i Moderatori e gli Amministratori possono usare questo comando.');
@@ -99,14 +96,15 @@ module.exports = {
             store.serverBloccato = true;
             await message.reply('🔒 **ATTIVAZIONE LOCKDOWN IN CORSO...**');
             await salvaSnapshot(message.guild, store);
-            await bloccareTuttiCanali(message.guild);
-            await message.channel.send('🚨 **SERVER BLINDATO!** Tutti i canali sono stati chiusi.');
+            await bloccareCanaليPublbici(message.guild, store);
+            await message.channel.send('🚨 **SERVER BLINDATO!** I canali pubblici sono stati chiusi.');
             await inviaLogSicurezza(message.guild,
                 `🔒 **Lockdown attivato** da <@${message.author.id}> (${message.author.tag})`
             );
             return true;
         }
 
+        // COMANDO UNLOCK MANUALE
         if (message.content.trim() === '!scudo-unlock') {
             if (!eModeratoreOAdmin(message.member)) {
                 await message.reply('❌ Solo i Moderatori e gli Amministratori possono usare questo comando.');
@@ -122,6 +120,7 @@ module.exports = {
             return true;
         }
 
+        // SE IL SERVER È BLOCCATO, CANCELLA I MESSAGGI DEGLI UTENTI NORMALI
         if (store.serverBloccato) {
             if (!eModeratoreOAdmin(message.member)) {
                 try {
