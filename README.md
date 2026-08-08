@@ -1,4 +1,3 @@
-
 # Bot Sicurezza Discord
 
 Bot di moderazione e sicurezza per Discord, con architettura a plugin. Rileva e blocca automaticamente spam e tentativi di raid/nuke, senza bisogno di intervento manuale.
@@ -7,7 +6,8 @@ Bot di moderazione e sicurezza per Discord, con architettura a plugin. Rileva e 
 
 - **Anti-spam automatico** — rileva raffiche di messaggi o messaggi ripetuti da uno stesso utente (anche bot) e li cancella in blocco, applicando un timeout temporaneo.
 - **Anti-nuke** — monitora l'audit log del server: se qualcuno esegue troppe azioni distruttive in pochi secondi (cancellazione canali/ruoli, ban, kick, creazione webhook), gli vengono rimossi immediatamente tutti i ruoli.
-- **Lockdown manuale** — comando `!scudo-lock` / `!scudo-unlock` per bloccare/sbloccare la scrittura in tutti i canali del server in caso di emergenza.
+- **Lockdown manuale** — comando `!scudo-lock` / `!scudo-unlock` per bloccare/sbloccare la scrittura in tutti i canali del server in caso di emergenza. Lo stato dei canali viene salvato e ripristinato perfettamente.
+- **Timeout manuale** — comando `!timeout` (alias `!muta`, `!mute`, `!blocca`) per applicare manualmente un timeout a un utente, riservato allo staff.
 - **Untimeout** — comando `!untimeout` (alias `!smuta`, `!unmute`, `!sblocca`) per rimuovere manualmente un timeout attivo, riservato allo staff.
 - **Log di sicurezza** — ogni azione automatica viene registrata in un canale dedicato (`log-sicurezza`), per avere uno storico consultabile in ogni momento.
 
@@ -23,7 +23,8 @@ Il bot è costruito con un sistema di plugin: `index.js` fa solo da motore (conn
     ├── lockdown.js     # !scudo-lock / !scudo-unlock
     ├── antispam.js      # rilevamento spam automatico
     ├── antinuke.js       # rilevamento azioni distruttive
-    └── untimeout.js       # rimozione timeout manuale
+    ├── timeout.js       # !timeout / applicazione timeout manuale
+    └── untimeout.js       # !untimeout / rimozione timeout manuale
 ```
 
 Per aggiungere una nuova funzionalità basta creare un nuovo file in `plugins/` che esporta `{ name, onMessage }` (per reagire ai messaggi) e/o `{ onAuditLogEntry }` (per reagire alle azioni nell'audit log) — viene caricato automaticamente all'avvio, senza toccare il resto del codice.
@@ -34,7 +35,7 @@ Per aggiungere una nuova funzionalità basta creare un nuovo file in `plugins/` 
    ```bash
    npm install
    ```
-2. Crea un'applicazione e un bot dal [Discord Developer Portal](https://discord.com/developers/applications), attivando l'intent **Message Content**.
+2. Crea un'applicazione e un bot dal [Discord Developer Portal](https://discord.com/developers/applications), attivando l'intent **Message Content** e **Guild Moderation**.
 3. Imposta la variabile d'ambiente `DISCORD_TOKEN` con il token del bot (e opzionalmente `LOG_CHANNEL_ID` con l'ID del canale dove vuoi i log, se non usi un canale chiamato `log-sicurezza`).
 4. Avvia il bot:
    ```bash
