@@ -1,5 +1,5 @@
 const { eModeratoreOAdmin, inviaLogSicurezza } = require('../utils');
-
+ 
 async function salvaSnapshot(guild, store) {
     // Salva lo stato ATTUALE di TUTTI i canali testuali
     try {
@@ -10,10 +10,11 @@ async function salvaSnapshot(guild, store) {
                 const override = channel.permissionOverwrites.resolve(guild.roles.everyone);
                 snapshot[channelId] = {
                     name: channel.name,
+                    ViewChannel: override?.allow.has('ViewChannel') ? true : override?.deny.has('ViewChannel') ? false : null,
                     SendMessages: override?.allow.has('SendMessages') ? true : override?.deny.has('SendMessages') ? false : null,
                     SendMessagesInThreads: override?.allow.has('SendMessagesInThreads') ? true : override?.deny.has('SendMessagesInThreads') ? false : null,
                     AddReactions: override?.allow.has('AddReactions') ? true : override?.deny.has('AddReactions') ? false : null,
-                    hasOverride: override !== null // Ricorda se il canale aveva un override specifico
+                    hasOverride: override !== null
                 };
             }
         }
@@ -22,10 +23,9 @@ async function salvaSnapshot(guild, store) {
         console.error('[ERRORE SNAPSHOT]:', error);
     }
 }
-
+ 
 async function bloccareCanalyPublici(guild, store) {
     // Chiude SOLO i canali pubblici (quelli senza override specifico su @everyone)
-    // I canali privati/con override rimangono come sono
     try {
         if (!store.lockdownSnapshot) return;
         
@@ -33,10 +33,10 @@ async function bloccareCanalyPublici(guild, store) {
         for (const [channelId, channel] of channels) {
             if (channel && channel.isTextBased() && !channel.isThread()) {
                 const statoSalvato = store.lockdownSnapshot[channelId];
-                // Chiudi solo se il canale era pubblico (senza override specifico)
                 if (statoSalvato && !statoSalvato.hasOverride) {
                     try {
                         await channel.permissionOverwrites.edit(guild.roles.everyone, {
+                            ViewChannel: false,
                             SendMessages: false,
                             SendMessagesInThreads: false,
                             AddReactions: false
@@ -51,11 +51,11 @@ async function bloccareCanalyPublici(guild, store) {
         console.error('[ERRORE LOCKDOWN]:', error);
     }
 }
-
+ 
 async function ripristinareDaSnapshot(guild, store) {
-    // Ripristina TUTTI i canali al loro stato originale (prima del lockdown)
+    // Ripristina TUTTI i canali al loro stato originale
     if (!store.lockdownSnapshot) return;
-
+ 
     try {
         const channels = await guild.channels.fetch();
         for (const [channelId, channel] of channels) {
@@ -63,13 +63,13 @@ async function ripristinareDaSnapshot(guild, store) {
                 try {
                     const stato = store.lockdownSnapshot[channelId];
                     if (stato) {
-                        // Se il canale originalmente non aveva override (era pubblico/neutro)
                         if (!stato.hasOverride) {
-                            // Rimuovi completamente l'override per tornare al neutro
+                            // Canale originalmente pubblico: elimina completamente l'override
                             await channel.permissionOverwrites.delete(guild.roles.everyone);
                         } else {
-                            // Se aveva un override (bloccato/rosso), ripristinalo esattamente
+                            // Canale con override: ripristina esattamente com'era
                             await channel.permissionOverwrites.edit(guild.roles.everyone, {
+                                ViewChannel: stato.ViewChannel,
                                 SendMessages: stato.SendMessages,
                                 SendMessagesInThreads: stato.SendMessagesInThreads,
                                 AddReactions: stato.AddReactions
@@ -86,14 +86,14 @@ async function ripristinareDaSnapshot(guild, store) {
         console.error('[ERRORE RIPRISTINO]:', error);
     }
 }
-
+ 
 module.exports = {
     name: 'lockdown',
-
+ 
     async onMessage(message, ctx) {
         const { store } = ctx;
         if (store.serverBloccato === undefined) store.serverBloccato = false;
-
+ 
         // COMANDO LOCK MANUALE
         if (message.content.trim() === '!scudo-lock') {
             if (!eModeratoreOAdmin(message.member)) {
@@ -110,7 +110,7 @@ module.exports = {
             );
             return true;
         }
-
+ 
         // COMANDO UNLOCK MANUALE
         if (message.content.trim() === '!scudo-unlock') {
             if (!eModeratoreOAdmin(message.member)) {
@@ -126,7 +126,7 @@ module.exports = {
             );
             return true;
         }
-
+ 
         // SE IL SERVER È BLOCCATO, CANCELLA I MESSAGGI DEGLI UTENTI NORMALI
         if (store.serverBloccato) {
             if (!eModeratoreOAdmin(message.member)) {
@@ -138,7 +138,8 @@ module.exports = {
                 return true;
             }
         }
-
+ 
         return false;
     }
 };
+ 
