@@ -22,30 +22,21 @@ async function salvaSnapshot(guild, store) {
     }
 }
 
-async function bloccareCanalyPublici(guild, store) {
+async function bloccareTuttiCanali(guild) {
+    // Chiude TUTTI i canali completamente, indipendentemente da com'erano prima
     try {
-        if (!store.lockdownSnapshot) return;
-        
         const channels = await guild.channels.fetch();
         for (const [channelId, channel] of channels) {
             if (channel && channel.isTextBased() && !channel.isThread()) {
-                const statoSalvato = store.lockdownSnapshot[channelId];
-                // Chiudi solo se il canale era completamente pubblico (null per tutti i permessi)
-                if (statoSalvato && 
-                    statoSalvato.ViewChannel === null && 
-                    statoSalvato.SendMessages === null && 
-                    statoSalvato.SendMessagesInThreads === null && 
-                    statoSalvato.AddReactions === null) {
-                    try {
-                        await channel.permissionOverwrites.edit(guild.roles.everyone, {
-                            ViewChannel: false,
-                            SendMessages: false,
-                            SendMessagesInThreads: false,
-                            AddReactions: false
-                        });
-                    } catch (err) {
-                        console.error(`[ERRORE PERMESSI] Canale ${channel.name}:`, err.message);
-                    }
+                try {
+                    await channel.permissionOverwrites.edit(guild.roles.everyone, {
+                        ViewChannel: false,
+                        SendMessages: false,
+                        SendMessagesInThreads: false,
+                        AddReactions: false
+                    });
+                } catch (err) {
+                    console.error(`[ERRORE PERMESSI] Canale ${channel.name}:`, err.message);
                 }
             }
         }
@@ -64,13 +55,21 @@ async function ripristinareDaSnapshot(guild, store) {
                 try {
                     const stato = store.lockdownSnapshot[channelId];
                     if (stato) {
-                        // Ripristina ESATTAMENTE com'era (anche neutro/null)
-                        await channel.permissionOverwrites.edit(guild.roles.everyone, {
-                            ViewChannel: stato.ViewChannel,
-                            SendMessages: stato.SendMessages,
-                            SendMessagesInThreads: stato.SendMessagesInThreads,
-                            AddReactions: stato.AddReactions
-                        });
+                        // Costruisci l'oggetto dei permessi
+                        const permsToSet = {};
+                        
+                        // Se il permesso era null (neutro), omettilo dall'edit così Discord lo toglie dall'override
+                        if (stato.ViewChannel !== null) permsToSet.ViewChannel = stato.ViewChannel;
+                        if (stato.SendMessages !== null) permsToSet.SendMessages = stato.SendMessages;
+                        if (stato.SendMessagesInThreads !== null) permsToSet.SendMessagesInThreads = stato.SendMessagesInThreads;
+                        if (stato.AddReactions !== null) permsToSet.AddReactions = stato.AddReactions;
+                        
+                        // Se tutti i permessi erano null (canale completamente pubblico), elimina l'override
+                        if (Object.keys(permsToSet).length === 0) {
+                            await channel.permissionOverwrites.delete(guild.roles.everyone);
+                        } else {
+                            await channel.permissionOverwrites.edit(guild.roles.everyone, permsToSet);
+                        }
                     }
                 } catch (err) {
                     console.error(`[ERRORE RIPRISTINO] Canale ${channel.name}:`, err.message);
@@ -98,8 +97,8 @@ module.exports = {
             store.serverBloccato = true;
             await message.reply('🔒 **ATTIVAZIONE LOCKDOWN IN CORSO...**');
             await salvaSnapshot(message.guild, store);
-            await bloccareCanalyPublici(message.guild, store);
-            await message.channel.send('🚨 **SERVER BLINDATO!** I canali pubblici sono stati chiusi.');
+            await bloccareTuttiCanali(message.guild);
+            await message.channel.send('🚨 **SERVER BLINDATO!** Tutti i canali sono stati chiusi.');
             await inviaLogSicurezza(message.guild,
                 `🔒 **Lockdown attivato** da <@${message.author.id}> (${message.author.tag})`
             );
