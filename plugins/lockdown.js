@@ -23,7 +23,7 @@ async function salvaSnapshot(guild, store) {
     }
 }
 
-async function bloccareCanaليPublbici(guild, store) {
+async function bloccareCanalyPublici(guild, store) {
     // Chiude SOLO i canali pubblici (quelli senza override specifico su @everyone)
     // I canali privati/con override rimangono come sono
     try {
@@ -63,11 +63,18 @@ async function ripristinareDaSnapshot(guild, store) {
                 try {
                     const stato = store.lockdownSnapshot[channelId];
                     if (stato) {
-                        await channel.permissionOverwrites.edit(guild.roles.everyone, {
-                            SendMessages: stato.SendMessages,
-                            SendMessagesInThreads: stato.SendMessagesInThreads,
-                            AddReactions: stato.AddReactions
-                        });
+                        // Se il canale originalmente non aveva override (era pubblico/neutro)
+                        if (!stato.hasOverride) {
+                            // Rimuovi completamente l'override per tornare al neutro
+                            await channel.permissionOverwrites.delete(guild.roles.everyone);
+                        } else {
+                            // Se aveva un override (bloccato/rosso), ripristinalo esattamente
+                            await channel.permissionOverwrites.edit(guild.roles.everyone, {
+                                SendMessages: stato.SendMessages,
+                                SendMessagesInThreads: stato.SendMessagesInThreads,
+                                AddReactions: stato.AddReactions
+                            });
+                        }
                     }
                 } catch (err) {
                     console.error(`[ERRORE RIPRISTINO] Canale ${channel.name}:`, err.message);
@@ -96,7 +103,7 @@ module.exports = {
             store.serverBloccato = true;
             await message.reply('🔒 **ATTIVAZIONE LOCKDOWN IN CORSO...**');
             await salvaSnapshot(message.guild, store);
-            await bloccareCanaليPublbici(message.guild, store);
+            await bloccareCanalyPublici(message.guild, store);
             await message.channel.send('🚨 **SERVER BLINDATO!** I canali pubblici sono stati chiusi.');
             await inviaLogSicurezza(message.guild,
                 `🔒 **Lockdown attivato** da <@${message.author.id}> (${message.author.tag})`
