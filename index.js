@@ -1,6 +1,6 @@
 // Server HTTP per mantenere attivo il servizio su Render
 const http = require('http');
-http.createServer((req, res) => res.end('Scudo Anti-Raid Online!')).listen(process.env.PORT || 3000);
+http.createServer((req, res) => res.end('Scudo Anti-Raid Online!')).listen(process.env.PORT || 10000);
 
 const fs = require('fs');
 const path = require('path');
@@ -12,7 +12,7 @@ const client = new Client({
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildMembers,
-        GatewayIntentBits.GuildModeration // necessario per leggere ban/kick/audit log
+        GatewayIntentBits.GuildModeration
     ]
 });
 
@@ -21,54 +21,56 @@ const TOKEN = process.env.DISCORD_TOKEN;
 // Stato condiviso tra tutti i plugin (es. serverBloccato, contatori, ecc.)
 const store = {};
 
-// ---- CARICAMENTO PLUGIN ----
-// Ogni file in ./plugins deve esportare un oggetto:
-// { name: 'nome', onMessage: async (message, ctx) => {} }
-// Se onMessage ritorna true, significa "gestito, fermati qui" (stoppa gli altri plugin sul messaggio).
+// Carica TUTTI i plugin dalla cartella plugins/
+const plugins = [];
 const pluginsDir = path.join(__dirname, 'plugins');
-const plugins = fs.readdirSync(pluginsDir)
-    .filter(file => file.endsWith('.js'))
-    .map(file => {
-        const plugin = require(path.join(pluginsDir, file));
-        console.log(`🔌 Plugin caricato: ${plugin.name || file}`);
-        return plugin;
-    });
+if (fs.existsSync(pluginsDir)) {
+    fs.readdirSync(pluginsDir)
+        .filter(file => file.endsWith('.js'))
+        .forEach(file => {
+            try {
+                const plugin = require(path.join(pluginsDir, file));
+                plugins.push(plugin);
+            } catch (err) {
+                console.error(`Errore nel caricamento plugin ${file}:`, err.message);
+            }
+        });
+}
 
-client.once('ready', () => {
+// Event: messageCreate - smista ai plugin
+client.on('messageCreate', async (message) => {
+    if (message.author.id !== client.user.id) return; // Ascolta solo il bot stesso
+    
+    for (const plugin of plugins) {
+        if (plugin.onMessage) {
+            try {
+                const shouldReturn = await plugin.onMessage(message, { store, client });
+                if (shouldReturn === true) break; // Se il plugin ritorna true, stop
+            } catch (err) {
+                console.error(`Errore in plugin ${plugin.name}:`, err.message);
+            }
+        }
+    }
+});
+
+// Event: guildAuditLogEntryCreate - smista ai plugin
+client.on('guildAuditLogEntryCreate', async (entry, guild) => {
+    for (const plugin of plugins) {
+        if (plugin.onAuditLogEntry) {
+            try {
+                await plugin.onAuditLogEntry(entry, guild, { store, client });
+            } catch (err) {
+                console.error(`Errore in plugin ${plugin.name} (audit log):`, err.message);
+            }
+        }
+    }
+});
+
+// Event: ready - bot online
+client.on('ready', () => {
     console.log(`🛡️ Sistema Anti-Raid Online come ${client.user.tag}! (${plugins.length} plugin attivi)`);
 });
 
-client.on('messageCreate', async (message) => {
-    // Ignora solo i messaggi del bot stesso (altrimenti rischia di reagire alle proprie azioni)
-    // e i messaggi fuori dai server (DM). Gli ALTRI bot vengono controllati normalmente.
-    if (message.author.id === client.user.id || !message.guild) return;
-
-    // Contesto passato a ogni plugin: stato condiviso + funzioni di utilità
-    const ctx = { store, client };
-
-    for (const plugin of plugins) {
-        if (typeof plugin.onMessage !== 'function') continue;
-        try {
-            const gestito = await plugin.onMessage(message, ctx);
-            if (gestito) break; // un plugin ha già gestito il messaggio, fermiamoci
-        } catch (err) {
-            console.error(`[ERRORE PLUGIN ${plugin.name || '?'}]:`, err.message);
-        }
-    }
-});
-
+// Login
 client.login(TOKEN);
-// Si attiva ogni volta che succede un'azione "loggata" da Discord: cancellazione
-// canali/ruoli, ban, kick, creazione webhook, ecc. Ogni plugin che espone
-// onAuditLogEntry(entry, guild, ctx) la riceve automaticamente.
-client.on('guildAuditLogEntryCreate', async (entry, guild) => {
-    const ctx = { store, client };
-    for (const plugin of plugins) {
-        if (typeof plugin.onAuditLogEntry !== 'function') continue;
-        try {
-            await plugin.onAuditLogEntry(entry, guild, ctx);
-        } catch (err) {
-            console.error(`[ERRORE PLUGIN ${plugin.name || '?'}]:`, err.message);
-        }
-    }
-});
+ 
