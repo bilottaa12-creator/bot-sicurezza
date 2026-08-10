@@ -39,8 +39,9 @@ if (fs.existsSync(pluginsDir)) {
 
 // Event: messageCreate - smista ai plugin
 client.on('messageCreate', async (message) => {
-    if (message.author.id !== client.user.id) return; // Ascolta solo il bot stesso
-    
+    // Ignora solo se il messaggio è stato inviato dal bot stesso (evita loop)
+    if (message.author.id === client.user.id) return;
+
     for (const plugin of plugins) {
         if (plugin.onMessage) {
             try {
@@ -73,4 +74,5 @@ client.on('ready', () => {
 
 // Login
 client.login(TOKEN);
+
  
