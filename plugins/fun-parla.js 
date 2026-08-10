@@ -7,7 +7,7 @@ const FRASI_INFORMATICHE = [
     'Uno, due, tre... infiniti bugs',
     'Stack overflow detected',
     'SEGMENTATION FAULT (core dumped)',
-    'L'errore sei tu,non io se non funziono'
+    'L'errore sei tu,non io se non funziono',
     'Sudo make me a sandwich',
     'echo "Il problema è fra tastiera e sedia"',
     'NULL pointer exception in real life',
@@ -21,7 +21,7 @@ const FRASI_INFORMATICHE = [
     'Prova su un browser diverso',
     'Acceso il Wi-Fi?',
     'Sono tutti problemi di Windows',
-    'Lo usate male voi, non è il codice'
+    'Lo usate male voi, non è il codice',
 ];
 
 function getFraseRandom() {
