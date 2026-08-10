@@ -2,12 +2,12 @@ const { eModeratoreOAdmin } = require('../utils');
 
 const FRASI_INFORMATICHE = [
     'Hai provato a spegnerlo e riaccenderlo?',
-    'Non ti arrabbiare se mi spengo, anch'io vorrei rilassarmi',
+    'Non ti arrabbiare se mi spengo, anch' vorrei rilassarmi',
     'Non è un bug, è una feature!',
     'Uno, due, tre... infiniti bugs',
     'Stack overflow detected',
     'SEGMENTATION FAULT (core dumped)',
-    'Se funziona non toccarlo',
+    'L'errore sei tu,non io se non funziono'
     'Sudo make me a sandwich',
     'echo "Il problema è fra tastiera e sedia"',
     'NULL pointer exception in real life',
@@ -21,11 +21,16 @@ const FRASI_INFORMATICHE = [
     'Prova su un browser diverso',
     'Acceso il Wi-Fi?',
     'Sono tutti problemi di Windows',
-    'Lo usate male voi non è il codice'
+    'Lo usate male voi, non è il codice'
 ];
 
 function getFraseRandom() {
     return FRASI_INFORMATICHE[Math.floor(Math.random() * FRASI_INFORMATICHE.length)];
+}
+
+function getGuildStore(store, guildId) {
+    if (!store[guildId]) store[guildId] = {};
+    return store[guildId];
 }
 
 module.exports = {
@@ -33,7 +38,7 @@ module.exports = {
 
     async onMessage(message, ctx) {
         const { store } = ctx;
-        if (store.parlaActive === undefined) store.parlaActive = false;
+        const guildStore = getGuildStore(store, message.guildId);
 
         // COMANDO PARLA
         if (message.content.trim() === '!parla') {
@@ -41,7 +46,7 @@ module.exports = {
                 await message.reply('❌ Solo i Moderatori e gli Amministratori possono usare questo comando.');
                 return true;
             }
-            store.parlaActive = true;
+            guildStore.parlaActive = true;
             await message.reply(`💬 **MODALITÀ PARLA ATTIVATA!** \n\n"${getFraseRandom()}"`);
             return true;
         }
@@ -52,13 +57,13 @@ module.exports = {
                 await message.reply('❌ Solo i Moderatori e gli Amministratori possono usare questo comando.');
                 return true;
             }
-            store.parlaActive = false;
+            guildStore.parlaActive = false;
             await message.reply('💬 **MODALITÀ PARLA DISATTIVATA!**');
             return true;
         }
 
         // SE PARLA ATTIVO, SCRIVI FRASI AD OGNI MESSAGGIO
-        if (store.parlaActive) {
+        if (guildStore.parlaActive) {
             try {
                 await message.reply(`💬 "${getFraseRandom()}"`);
             } catch (err) {
