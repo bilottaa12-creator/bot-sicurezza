@@ -11,12 +11,17 @@ function getFotoRandom() {
     return FOTO_TUX[Math.floor(Math.random() * FOTO_TUX.length)];
 }
 
+function getGuildStore(store, guildId) {
+    if (!store[guildId]) store[guildId] = {};
+    return store[guildId];
+}
+
 module.exports = {
     name: 'fun-tux',
 
     async onMessage(message, ctx) {
         const { store } = ctx;
-        if (store.tuxSpamActive === undefined) store.tuxSpamActive = false;
+        const guildStore = getGuildStore(store, message.guildId);
 
         // COMANDO TUX-ON
         if (message.content.trim() === '!tux-on') {
@@ -24,7 +29,7 @@ module.exports = {
                 await message.reply('❌ Solo i Moderatori e gli Amministratori possono usare questo comando.');
                 return true;
             }
-            store.tuxSpamActive = true;
+            guildStore.tuxSpamActive = true;
             await message.reply('🐧 **TUX MODE ATTIVATO!** Tux arriva ad ogni messaggio!');
             return true;
         }
@@ -35,13 +40,13 @@ module.exports = {
                 await message.reply('❌ Solo i Moderatori e gli Amministratori possono usare questo comando.');
                 return true;
             }
-            store.tuxSpamActive = false;
+            guildStore.tuxSpamActive = false;
             await message.reply('🐧 **TUX MODE DISATTIVATO!**');
             return true;
         }
 
         // SE TUX SPAM ATTIVO, MANDA TUX AD OGNI MESSAGGIO
-        if (store.tuxSpamActive) {
+        if (guildStore.tuxSpamActive) {
             try {
                 const embed = new EmbedBuilder()
                     .setImage(getFotoRandom())
