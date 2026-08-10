@@ -21,7 +21,7 @@ const FRASI_INFORMATICHE = [
     'Prova su un browser diverso',
     'Acceso il Wi-Fi?',
     'Sono tutti problemi di Windows',
-    'Lo usate male voi, non è il codice'
+    'Lo usate male voi non è il codice'
 ];
 
 function getFraseRandom() {
