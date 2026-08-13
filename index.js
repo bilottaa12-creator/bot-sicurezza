@@ -1,3 +1,4 @@
+// Server HTTP per mantenere attivo il servizio su Render
 const http = require('http');
 http.createServer((req, res) => res.end('Scudo Anti-Raid Online!')).listen(process.env.PORT || 10000);
 
@@ -31,7 +32,10 @@ if (!TOKEN) {
     console.log('🔑 Token trovato, tentativo di connessione a Discord...');
 }
 
+// Caricamento dello Stato Condiviso
 const store = {};
+
+// Carica TUTTI i plugin dalla cartella plugins/
 const plugins = [];
 const pluginsDir = path.join(__dirname, 'plugins');
 
@@ -49,8 +53,10 @@ if (fs.existsSync(pluginsDir)) {
         });
 }
 
+// Event: messageCreate - smista ai plugin
 client.on('messageCreate', async (message) => {
     if (message.author.id === client.user.id) return;
+
     for (const plugin of plugins) {
         if (plugin.onMessage) {
             try {
@@ -63,6 +69,7 @@ client.on('messageCreate', async (message) => {
     }
 });
 
+// Event: messageReactionAdd - per i ruoli con emoji
 client.on('messageReactionAdd', async (reaction, user) => {
     for (const plugin of plugins) {
         if (plugin.onReactionAdd) {
@@ -75,6 +82,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
     }
 });
 
+// Event: messageReactionRemove - per rimuovere ruoli con emoji
 client.on('messageReactionRemove', async (reaction, user) => {
     for (const plugin of plugins) {
         if (plugin.onReactionRemove) {
@@ -87,11 +95,31 @@ client.on('messageReactionRemove', async (reaction, user) => {
     }
 });
 
-client.on('ready', () => {
-    console.log(`✅ DISCORD CONNESSO! Online come ${client.user.tag}`);
+// Event: guildAuditLogEntryCreate
+client.on('guildAuditLogEntryCreate', async (entry, guild) => {
+    for (const plugin of plugins) {
+        if (plugin.onAuditLogEntry) {
+            try {
+                await plugin.onAuditLogEntry(entry, guild, { store, client });
+            } catch (err) {
+                console.error(`Errore in plugin ${plugin.name} (audit log):`, err.message);
+            }
+        }
+    }
 });
 
-// Cattura errori di login
+// Event: ready - bot online
+client.on('ready', () => {
+    console.log(`✅ DISCORD CONNESSO! Online come ${client.user.tag} (${plugins.length} plugin attivi)`);
+});
+
+// Debug e Gestione Errori di Connessione
+client.on('debug', (info) => console.log(`🔍 [DEBUG]: ${info}`));
+client.on('warn', (warning) => console.log(`⚠️ [WARN]: ${warning}`));
+client.on('error', (err) => console.error('❌ Errore Client Discord:', err));
+process.on('unhandledRejection', (reason) => console.error('❌ Errore Non Gestito:', reason));
+
+// Login con cattura degli errori
 client.login(TOKEN).catch(err => {
-    console.error('❌ ERRORE DURANTE IL LOGIN:', err.message);
+    console.error('❌ ERRORE CRITICO DURANTE IL LOGIN:', err.message);
 });
