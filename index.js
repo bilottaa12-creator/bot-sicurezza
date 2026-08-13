@@ -4,7 +4,7 @@ http.createServer((req, res) => res.end('Scudo Anti-Raid Online!')).listen(proce
 
 const fs = require('fs');
 const path = require('path');
-const { Client, GatewayIntentBits } = require('discord.js');
+const { Client, GatewayIntentBits, Partials } = require('discord.js');
 
 const client = new Client({
     intents: [
@@ -12,7 +12,13 @@ const client = new Client({
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildMembers,
-        GatewayIntentBits.GuildModeration
+        GatewayIntentBits.GuildModeration,
+        GatewayIntentBits.GuildMessageReactions // Aggiunto per il plugin dei ruoli con le emoji!
+    ],
+    partials: [
+        Partials.Message,
+        Partials.Channel,
+        Partials.Reaction // Necessario per rilevare reazioni su vecchi messaggi
     ]
 });
 
@@ -39,7 +45,7 @@ if (fs.existsSync(pluginsDir)) {
 
 // Event: messageCreate - smista ai plugin
 client.on('messageCreate', async (message) => {
-    // Ignora solo se il messaggio è stato inviato dal bot stesso (evita loop)
+    // Ignora solo se il messaggio è inviato dal bot stesso (evita loop)
     if (message.author.id === client.user.id) return;
 
     for (const plugin of plugins) {
@@ -49,6 +55,32 @@ client.on('messageCreate', async (message) => {
                 if (shouldReturn === true) break; // Se il plugin ritorna true, stop
             } catch (err) {
                 console.error(`Errore in plugin ${plugin.name}:`, err.message);
+            }
+        }
+    }
+});
+
+// Event: messageReactionAdd - per i ruoli con emoji
+client.on('messageReactionAdd', async (reaction, user) => {
+    for (const plugin of plugins) {
+        if (plugin.onReactionAdd) {
+            try {
+                await plugin.onReactionAdd(reaction, user, { store, client });
+            } catch (err) {
+                console.error(`Errore in plugin ${plugin.name} (reaction add):`, err.message);
+            }
+        }
+    }
+});
+
+// Event: messageReactionRemove - per rimuovere ruoli con emoji
+client.on('messageReactionRemove', async (reaction, user) => {
+    for (const plugin of plugins) {
+        if (plugin.onReactionRemove) {
+            try {
+                await plugin.onReactionRemove(reaction, user, { store, client });
+            } catch (err) {
+                console.error(`Errore in plugin ${plugin.name} (reaction remove):`, err.message);
             }
         }
     }
@@ -74,5 +106,3 @@ client.on('ready', () => {
 
 // Login
 client.login(TOKEN);
-
- 
