@@ -1,4 +1,3 @@
-// plugins/help.js
 const { EmbedBuilder } = require('discord.js');
 
 module.exports = {
@@ -8,7 +7,8 @@ module.exports = {
         const content = message.content.trim();
         if (content !== '!help' && content !== '!comandi') return false;
 
-        const videoUrl = 'https://raw.githubusercontent.com/bilottaa12-creator/bot-sicurezza/main/vqjgnwoi6x6c1.mp4';
+        // Link diretto al file mp4 (raw GitHub, permanente)
+        const videoUrl = 'https://raw.githubusercontent.com/bilottaa12-creator/bot-sicurezza/main/assets/help-banner.mp4';
 
         const embed = new EmbedBuilder()
             .setColor(0x5865F2)
@@ -33,10 +33,13 @@ module.exports = {
             .setFooter({ text: 'Solo mod/admin possono usare i comandi di sicurezza' });
 
         try {
+            // Primo messaggio: il video come allegato
             await message.reply({ files: [videoUrl] });
+            // Secondo messaggio: il pannello comandi
             await message.channel.send({ embeds: [embed] });
         } catch (err) {
             console.error('[ERRORE HELP]:', err.message);
+            // Fallback: manda solo l'embed se il video fallisce
             await message.channel.send({ embeds: [embed] });
         }
 
