@@ -1,64 +1,58 @@
-const { eModeratoreOAdmin } = require('../utils');
 const { EmbedBuilder } = require('discord.js');
-
-const FOTO_TUX = [
-    'https://www.tux.org/~torvalds/linux/linux-logo.png',
-    'https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Tux.svg/1200px-Tux.svg.png',
-    'https://raw.githubusercontent.com/torvalds/linux/master/Documentation/logo.png'
-];
-
-function getFotoRandom() {
-    return FOTO_TUX[Math.floor(Math.random() * FOTO_TUX.length)];
-}
+const { eModeratoreOAdmin } = require('../utils');
 
 function getGuildStore(store, guildId) {
     if (!store[guildId]) store[guildId] = {};
     return store[guildId];
 }
 
+// Immagini Tux a rotazione casuale (link raw GitHub)
+const TUX_IMAGES = [
+    'https://raw.githubusercontent.com/bilottaa12-creator/bot-sicurezza/main/assets/tux1.webp'
+    // aggiungo qui altri link man mano che caricherò altre immagini
+];
+
+function tuxImageCasuale() {
+    return TUX_IMAGES[Math.floor(Math.random() * TUX_IMAGES.length)];
+}
+
 module.exports = {
     name: 'fun-tux',
-
     async onMessage(message, ctx) {
-        const { store } = ctx;
-        const guildStore = getGuildStore(store, message.guildId);
+        const guildStore = getGuildStore(ctx.store, message.guildId);
 
-        // COMANDO TUX-ON
         if (message.content.trim() === '!tux-on') {
             if (!eModeratoreOAdmin(message.member)) {
-                await message.reply('❌ Solo i Moderatori e gli Amministratori possono usare questo comando.');
+                await message.reply('❌ Solo mod/admin');
                 return true;
             }
             guildStore.tuxSpamActive = true;
-            await message.reply('🐧 **TUX MODE ATTIVATO!** Tux arriva ad ogni messaggio!');
+            await message.reply('🐧 TUX MODE ON! Tux arriva ad ogni messaggio!');
             return true;
         }
 
-        // COMANDO TUX-OFF
         if (message.content.trim() === '!tux-off') {
             if (!eModeratoreOAdmin(message.member)) {
-                await message.reply('❌ Solo i Moderatori e gli Amministratori possono usare questo comando.');
+                await message.reply('❌ Solo mod/admin');
                 return true;
             }
             guildStore.tuxSpamActive = false;
-            await message.reply('🐧 **TUX MODE DISATTIVATO!**');
+            await message.reply('🐧 TUX MODE OFF!');
             return true;
         }
 
-        // SE TUX SPAM ATTIVO, MANDA TUX AD OGNI MESSAGGIO
         if (guildStore.tuxSpamActive) {
+            const embed = new EmbedBuilder()
+                .setColor(0xFFCC00)
+                .setDescription('🐧 Tux approva!')
+                .setThumbnail(tuxImageCasuale());
+
             try {
-                const embed = new EmbedBuilder()
-                    .setImage(getFotoRandom())
-                    .setColor('#FFD700')
-                    .setFooter({ text: '🐧 Tux approva!' });
                 await message.reply({ embeds: [embed] });
             } catch (err) {
-                console.error('Errore nel mandare Tux:', err.message);
+                console.error('[ERRORE FUN-TUX]:', err.message);
+                await message.reply('🐧 Tux approva!');
             }
-            return false;
         }
-
-        return false;
     }
 };
