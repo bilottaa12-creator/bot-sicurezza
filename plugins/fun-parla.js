@@ -62,7 +62,7 @@ async function fraseCasualeAI() {
                         content: `Genera la frase incorporando in modo assurdo queste due parole: ${parola1} e ${parola2}.`
                     }
                 ],
-                max_tokens: 60,
+                max_tokens: 200,
                 temperature: 1.3
             })
         });
@@ -73,7 +73,13 @@ async function fraseCasualeAI() {
             return fraseFallback();
         }
 
-        return data.choices[0].message.content.trim();
+        const frase = data.choices[0].message.content.trim();
+        if (!frase) {
+            console.error('[ERRORE FUN-PARLA]: frase vuota ricevuta dall\'AI');
+            return fraseFallback();
+        }
+
+        return frase;
 
     } catch (err) {
         console.error('[ERRORE FUN-PARLA]:', err.message);
