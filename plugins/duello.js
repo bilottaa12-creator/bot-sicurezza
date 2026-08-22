@@ -1,8 +1,8 @@
 // Racconti di riserva se l'AI non risponde (il {vincitore} viene sostituito)
 const RACCONTI_FALLBACK = [
-    "{sfidante} e {avversario} si sono affrontati a colpi di tastiera meccanica. Alla fine {vincitore} ha vinto lanciando un mouse wireless come un boomerang.",
-    "Duello leggendario tra {sfidante} e {avversario}, combattuto a suon di meme. {vincitore} ha trionfato con una gif perfettamente sincronizzata.",
-    "{sfidante} ha sfidato {avversario} a duello. Dopo una lotta epica a colpi di emoji, {vincitore} ha vinto per squalifica dell'avversario (aveva finito la batteria)."
+    "{sfidante} sguainò la lama forgiata nel fuoco antico, fronteggiando {avversario} sotto un cielo di tempesta. Le spade cantarono scintille per un'eternità, finché {vincitore} non trovò la breccia fatale nella guardia nemica.",
+    "Il sangue di drago scorreva ancora sul terreno quando {sfidante} e {avversario} si scontrarono, magia oscura e acciaio che si intrecciavano nell'aria. Con un ultimo, devastante fendente, {vincitore} pose fine allo scontro.",
+    "Nessuna tregua fu concessa tra {sfidante} e {avversario}: incantesimi proibiti squarciarono il campo di battaglia. Quando la polvere si posò, solo {vincitore} restava in piedi, la lama ancora fumante."
 ];
 
 function getGuildStore(store, guildId) {
@@ -35,9 +35,10 @@ async function raccontoDuelloAI(nomeSfidante, nomeAvversario, nomeVincitore) {
                     {
                         role: 'system',
                         content:
-                            'Scrivi un breve racconto assurdo e divertente (massimo 5 frasi, in italiano) di un ' +
-                            'duello epico e ridicolo tra due persone, con armi/poteri improbabili. Alla fine deve ' +
-                            'chiaramente vincere la persona indicata come vincitore designato, in un modo assurdo. ' +
+                            'Scrivi un breve racconto epico e serio (massimo 4 frasi, in italiano) di un duello ' +
+                            'in stile fantasy tra due guerrieri, con spade vere, magia oscura e toni drammatici. ' +
+                            'Stile cinematografico e teso, come una scena di battaglia in un romanzo fantasy. ' +
+                            'Alla fine deve chiaramente vincere la persona indicata come vincitore designato. ' +
                             'Niente titoli, niente spiegazioni, solo il racconto.'
                     },
                     {
@@ -45,7 +46,7 @@ async function raccontoDuelloAI(nomeSfidante, nomeAvversario, nomeVincitore) {
                         content: `Sfidante: ${nomeSfidante}. Avversario: ${nomeAvversario}. Vincitore designato: ${nomeVincitore}.`
                     }
                 ],
-                max_tokens: 250,
+                max_tokens: 400,
                 temperature: 1.1
             })
         });
@@ -57,8 +58,10 @@ async function raccontoDuelloAI(nomeSfidante, nomeAvversario, nomeVincitore) {
         }
 
         const racconto = data.choices[0].message.content.trim();
-        if (!racconto) {
-            console.error('[ERRORE DUELLO]: racconto vuoto ricevuto dall\'AI');
+        const terminaBene = /[.!?]$/.test(racconto);
+
+        if (!racconto || !terminaBene) {
+            console.error('[ERRORE DUELLO]: racconto vuoto o troncato ricevuto dall\'AI');
             return raccontoFallback(nomeSfidante, nomeAvversario, nomeVincitore);
         }
 
@@ -104,7 +107,7 @@ module.exports = {
 
         const racconto = await raccontoDuelloAI(nomeSfidante, nomeAvversario, nomeVincitore);
 
-        await message.reply(`⚔️ **DUELLO: ${nomeSfidante} vs ${nomeAvversario}**\n\n${racconto}\n\n🏆 **Vincitore: ${nomeVincitore}**`);
+        await message.reply(`⚔️ **${nomeSfidante} contro ${nomeAvversario}**\n\n${racconto}\n\n🏆 **Ha prevalso: ${nomeVincitore}**`);
         return true;
     }
 };
