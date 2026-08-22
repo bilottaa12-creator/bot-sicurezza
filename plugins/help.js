@@ -12,7 +12,7 @@ module.exports = {
 
         const embed = new EmbedBuilder()
             .setColor(0x5865F2)
-            .setTitle('🛡️ — SCUDO BOT — 🛡️')
+            .setTitle('🛡️ — SICUREZZA BOT — 🛡️')
             .setDescription('Benvenuto nel pannello comandi ufficiale del bot!')
             .addFields(
                 {
