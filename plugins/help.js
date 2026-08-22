@@ -26,8 +26,12 @@ module.exports = {
                 {
                     name: '🎉 — DIVERTIMENTO —',
                     value:
-                        '`!tux-on` / `!tux-off` → Modalità Tux (emoji 🐧 ad ogni messaggio)\n' +
-                        '`!parla` / `!parla-off` → Modalità frasi informatiche random'
+                        '`!tux-on` / `!tux-off` → Modalità Tux (immagine 🐧 ad ogni messaggio)\n' +
+                        '`!parla` / `!parla-off` → Modalità frasi assurde generate dall\'AI'
+                },
+                {
+                    name: '🤖 — INTELLIGENZA ARTIFICIALE —',
+                    value: '`!ask <domanda>` → Fai una domanda all\'AI del bot (aperto a tutti)'
                 }
             )
             .setFooter({ text: 'Solo mod/admin possono usare i comandi di sicurezza' });
