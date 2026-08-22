@@ -39,7 +39,11 @@ async function fraseCasualeAI() {
                         content:
                             'Genera UNA sola frase breve (massimo 12 parole), in italiano, completamente ' +
                             'assurda e scollegata da qualsiasi contesto, come se rispondessi a caso senza ' +
-                            'senso a chi ti scrive. Niente spiegazioni, niente virgolette, solo la frase.'
+                            'senso a chi ti scrive. Alterna il tipo di frase ogni volta: a volte una ' +
+                            'affermazione strana (es. "Il coccodrillo mangia il gelato con la coda di una ' +
+                            'stella"), a volte una domanda assurda rivolta a chi scrive (es. "Ti piace la ' +
+                            'luna?", "Hai mai parlato con un frigorifero?"). Niente spiegazioni, niente ' +
+                            'virgolette, solo la frase.'
                     },
                     { role: 'user', content: 'Genera la frase.' }
                 ],
