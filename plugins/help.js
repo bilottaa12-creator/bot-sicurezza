@@ -27,7 +27,8 @@ module.exports = {
                     name: '🎉 — DIVERTIMENTO —',
                     value:
                         '`!tux-on` / `!tux-off` → Modalità Tux (immagine 🐧 ad ogni messaggio)\n' +
-                        '`!parla` / `!parla-off` → Modalità frasi assurde generate dall\'AI'
+                        '`!parla` / `!parla-off` → Modalità frasi assurde generate dall\'AI\n' +
+                        '`!duello @utente` → Sfida assurda generata dall\'AI, vince a caso'
                 },
                 {
                     name: '🤖 — INTELLIGENZA ARTIFICIALE —',
