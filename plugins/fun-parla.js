@@ -1,5 +1,18 @@
 const { eModeratoreOAdmin } = require('../utils');
 
+// Parole casuali usate come "seme" per forzare frasi sempre diverse
+const PAROLE_SEME = [
+    'luna', 'frigorifero', 'coccodrillo', 'ombrello', 'pianeta', 'calzino',
+    'vulcano', 'gatto', 'wifi', 'castello', 'banana', 'astronauta',
+    'tastiera', 'nuvola', 'squalo', 'pizza', 'robot', 'foresta',
+    'chitarra', 'medusa', 'treno', 'zaino', 'drago', 'panino'
+];
+
+function dueParoleCasuali() {
+    const shuffled = [...PAROLE_SEME].sort(() => Math.random() - 0.5);
+    return [shuffled[0], shuffled[1]];
+}
+
 // Frasi di riserva, usate solo se la chiamata all'AI fallisce
 const FRASI_FALLBACK = [
     "Hai provato a spegnerlo e riaccenderlo?",
@@ -23,6 +36,8 @@ function fraseFallback() {
 async function fraseCasualeAI() {
     if (!process.env.GROQ_API_KEY) return fraseFallback();
 
+    const [parola1, parola2] = dueParoleCasuali();
+
     try {
         const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
@@ -39,16 +54,16 @@ async function fraseCasualeAI() {
                         content:
                             'Genera UNA sola frase breve (massimo 12 parole), in italiano, completamente ' +
                             'assurda e scollegata da qualsiasi contesto, come se rispondessi a caso senza ' +
-                            'senso a chi ti scrive. Alterna il tipo di frase ogni volta: a volte una ' +
-                            'affermazione strana (es. "Il coccodrillo mangia il gelato con la coda di una ' +
-                            'stella"), a volte una domanda assurda rivolta a chi scrive (es. "Ti piace la ' +
-                            'luna?", "Hai mai parlato con un frigorifero?"). Niente spiegazioni, niente ' +
-                            'virgolette, solo la frase.'
+                            'senso a chi ti scrive. Alterna casualmente tra affermazioni strane e domande ' +
+                            'assurde rivolte a chi scrive. Niente spiegazioni, niente virgolette, solo la frase.'
                     },
-                    { role: 'user', content: 'Genera la frase.' }
+                    {
+                        role: 'user',
+                        content: `Genera la frase incorporando in modo assurdo queste due parole: ${parola1} e ${parola2}.`
+                    }
                 ],
                 max_tokens: 60,
-                temperature: 1.2
+                temperature: 1.3
             })
         });
 
