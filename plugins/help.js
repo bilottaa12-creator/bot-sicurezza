@@ -21,7 +21,8 @@ module.exports = {
                         '`!scudo-lock` → Blocca tutti i canali (lockdown emergenza)\n' +
                         '`!scudo-unlock` → Ripristina lo stato precedente dei canali\n' +
                         '`!timeout @utente <minuti>` → Applica timeout (alias: `!muta`, `!mute`, `!blocca`)\n' +
-                        '`!untimeout @utente` → Rimuove il timeout (alias: `!smuta`, `!unmute`, `!sblocca`)'
+                        '`!untimeout @utente` → Rimuove il timeout (alias: `!smuta`, `!unmute`, `!sblocca`)\n' +
+                        '`!purge <numero>` → Cancella in blocco gli ultimi messaggi (max 100, ultimi 14gg)'
                 },
                 {
                     name: '🎉 — DIVERTIMENTO —',
