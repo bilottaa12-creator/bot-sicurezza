@@ -22,7 +22,11 @@ module.exports = {
                         '`!scudo-unlock` → Ripristina lo stato precedente dei canali\n' +
                         '`!timeout @utente <minuti>` → Applica timeout (alias: `!muta`, `!mute`, `!blocca`)\n' +
                         '`!untimeout @utente` → Rimuove il timeout (alias: `!smuta`, `!unmute`, `!sblocca`)\n' +
-                        '`!purge <numero>` → Cancella in blocco gli ultimi messaggi (max 100, ultimi 14gg)'
+                        '`!purge <numero>` → Cancella in blocco gli ultimi messaggi (max 100, ultimi 14gg)\n' +
+                        '`!warn @utente <motivo>` → Richiama un utente (al 3° richiamo: timeout automatico)\n' +
+                        '`!warnings @utente` → Vedi i richiami di qualcuno (alias `!avvisi`)\n' +
+                        '`!unwarn @utente [numero]` → Toglie un richiamo (senza numero, toglie l\'ultimo)\n' +
+                        '`!clearwarn @utente` → Azzera tutti i richiami di un utente'
                 },
                 {
                     name: '🎉 — DIVERTIMENTO —',
