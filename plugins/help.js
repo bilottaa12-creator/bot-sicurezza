@@ -38,6 +38,10 @@ module.exports = {
                 {
                     name: '🤖 — INTELLIGENZA ARTIFICIALE —',
                     value: '`!ask <domanda>` → Fai una domanda all\'AI del bot (aperto a tutti)'
+                },
+                {
+                    name: 'ℹ️ — UTILITY —',
+                    value: '`!server` → Statistiche del server (membri, canali, boost, ecc.) (alias `!serverinfo`)'
                 }
             )
             .setFooter({ text: 'Solo mod/admin possono usare i comandi di sicurezza' });
