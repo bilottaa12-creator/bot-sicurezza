@@ -5,8 +5,11 @@ http.createServer((req, res) => res.end('Scudo Anti-Raid Online!')).listen(proce
 const fs = require('fs');
 const path = require('path');
 const { Client, GatewayIntentBits, Partials } = require('discord.js');
+const { connectDB } = require('./db');
 
 console.log('🔄 Avvio del bot in corso...');
+
+connectDB();
 
 const client = new Client({
     intents: [
