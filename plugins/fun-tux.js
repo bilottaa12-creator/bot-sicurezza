@@ -9,7 +9,7 @@ function getGuildStore(store, guildId) {
 // Immagini Tux a rotazione casuale (link raw GitHub)
 const TUX_IMAGES = [
     'https://raw.githubusercontent.com/bilottaa12-creator/bot-sicurezza/main/assets/tux1.webp'
-    // aggiungo qui altri link man mano che caricherò altre immagini
+    // aggiungi qui altri link man mano che carichi altre immagini
 ];
 
 function tuxImageCasuale() {
@@ -22,7 +22,7 @@ module.exports = {
         const guildStore = getGuildStore(ctx.store, message.guildId);
 
         if (message.content.trim() === '!tux-on') {
-            if (!eModeratoreOAdmin(message.member)) {
+            if (!(await eModeratoreOAdmin(message.member))) {
                 await message.reply('❌ Solo mod/admin');
                 return true;
             }
@@ -32,7 +32,7 @@ module.exports = {
         }
 
         if (message.content.trim() === '!tux-off') {
-            if (!eModeratoreOAdmin(message.member)) {
+            if (!(await eModeratoreOAdmin(message.member))) {
                 await message.reply('❌ Solo mod/admin');
                 return true;
             }
