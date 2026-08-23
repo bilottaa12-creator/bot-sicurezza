@@ -41,7 +41,9 @@ module.exports = {
                 },
                 {
                     name: 'ℹ️ — UTILITY —',
-                    value: '`!server` → Statistiche del server (membri, canali, boost, ecc.) (alias `!serverinfo`)'
+                    value:
+                        '`!server` → Statistiche del server (membri, canali, boost, ecc.) (alias `!serverinfo`)\n' +
+                        '`!top` → Classifica dei membri più attivi per messaggi (alias `!classifica`)'
                 }
             )
             .setFooter({ text: 'Solo mod/admin possono usare i comandi di sicurezza' });
