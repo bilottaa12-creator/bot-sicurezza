@@ -93,7 +93,7 @@ module.exports = {
         const guildStore = getGuildStore(ctx.store, message.guildId);
 
         if (message.content.trim() === '!parla') {
-            if (!eModeratoreOAdmin(message.member)) {
+            if (!(await eModeratoreOAdmin(message.member))) {
                 await message.reply('❌ Solo mod/admin');
                 return true;
             }
@@ -103,7 +103,7 @@ module.exports = {
         }
 
         if (message.content.trim() === '!parla-off') {
-            if (!eModeratoreOAdmin(message.member)) {
+            if (!(await eModeratoreOAdmin(message.member))) {
                 await message.reply('❌ Solo mod/admin');
                 return true;
             }
