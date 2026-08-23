@@ -6,7 +6,7 @@ module.exports = {
     async onMessage(message, ctx) {
         if (!message.content.trim().startsWith('!purge')) return false;
 
-        if (!eModeratoreOAdmin(message.member)) {
+        if (!(await eModeratoreOAdmin(message.member))) {
             await message.reply('❌ Solo mod/admin');
             return true;
         }
