@@ -24,4 +24,16 @@ messageCountSchema.index({ guildId: 1, userId: 1 }, { unique: true });
 
 const MessageCount = mongoose.model('MessageCount', messageCountSchema);
 
-module.exports = { connectDB, MessageCount };
+// Richiami (warning) per utente, per server (usato da !warn)
+const warningSchema = new mongoose.Schema({
+    guildId: { type: String, required: true },
+    userId: { type: String, required: true },
+    motivo: { type: String, required: true },
+    moderatore: { type: String, required: true },
+    data: { type: Date, default: Date.now }
+});
+warningSchema.index({ guildId: 1, userId: 1 });
+
+const Warning = mongoose.model('Warning', warningSchema);
+
+module.exports = { connectDB, MessageCount, Warning };
