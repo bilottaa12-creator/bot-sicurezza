@@ -36,4 +36,12 @@ warningSchema.index({ guildId: 1, userId: 1 });
 
 const Warning = mongoose.model('Warning', warningSchema);
 
-module.exports = { connectDB, MessageCount, Warning };
+// Impostazioni del server (es. benvenuto attivo/disattivo)
+const guildSettingsSchema = new mongoose.Schema({
+    guildId: { type: String, required: true, unique: true },
+    welcomeEnabled: { type: Boolean, default: false }
+});
+
+const GuildSettings = mongoose.model('GuildSettings', guildSettingsSchema);
+
+module.exports = { connectDB, MessageCount, Warning, GuildSettings };
