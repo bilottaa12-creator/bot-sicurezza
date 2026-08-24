@@ -33,7 +33,8 @@ module.exports = {
                     value:
                         '`!tux-on` / `!tux-off` → Modalità Tux (immagine 🐧 ad ogni messaggio)\n' +
                         '`!parla` / `!parla-off` → Modalità frasi assurde generate dall\'AI\n' +
-                        '`!duello @utente` → Sfida assurda generata dall\'AI, vince a caso'
+                        '`!duello @utente` → Sfida assurda generata dall\'AI, vince a caso\n' +
+                        '`!palla <domanda>` → Palla magica, risponde sì/no/forse (alias `!8ball`)'
                 },
                 {
                     name: '🤖 — INTELLIGENZA ARTIFICIALE —',
