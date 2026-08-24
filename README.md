@@ -1,33 +1,66 @@
-# Bot Sicurezza Discord
+# sicurezzabot — Bot Discord
 
-Bot di moderazione e sicurezza per Discord, con architettura a plugin. Rileva e blocca automaticamente spam e tentativi di raid/nuke, senza bisogno di intervento manuale.
+Bot di moderazione, sicurezza e intrattenimento per Discord, con architettura a plugin. Rileva e blocca automaticamente spam e tentativi di raid/nuke senza intervento manuale, offre strumenti di moderazione per lo staff, un'AI integrata e alcune funzioni divertenti.
+
+Disponibile anche su [top.gg](https://top.gg) (in fase di verifica).
 
 ## Funzionalità
 
+### 🔒 Sicurezza
 - **Anti-spam automatico** — rileva raffiche di messaggi o messaggi ripetuti da uno stesso utente (anche bot) e li cancella in blocco, applicando un timeout temporaneo.
 - **Anti-nuke** — monitora l'audit log del server: se qualcuno esegue troppe azioni distruttive in pochi secondi (cancellazione canali/ruoli, ban, kick, creazione webhook), gli vengono rimossi immediatamente tutti i ruoli.
-- **Lockdown manuale** — comando `!scudo-lock` / `!scudo-unlock` per bloccare/sbloccare la scrittura in tutti i canali del server in caso di emergenza. Lo stato dei canali viene salvato e ripristinato perfettamente.
-- **Timeout manuale** — comando `!timeout` (alias `!muta`, `!mute`, `!blocca`) per applicare manualmente un timeout a un utente, riservato allo staff.
-- **Untimeout** — comando `!untimeout` (alias `!smuta`, `!unmute`, `!sblocca`) per rimuovere manualmente un timeout attivo, riservato allo staff.
-- **Log di sicurezza** — ogni azione automatica viene registrata in un canale dedicato (`log-sicurezza`), per avere uno storico consultabile in ogni momento.
+- **Lockdown manuale** — `!scudo-lock` / `!scudo-unlock` blocca/sblocca la scrittura in tutti i canali del server in caso di emergenza, isolato per singolo server. Lo stato dei canali viene salvato e ripristinato perfettamente. I ruoli con "mod" nel nome mantengono sempre la possibilità di scrivere durante il lockdown.
+- **Timeout manuale** — `!timeout @utente <minuti>` (alias `!muta`, `!mute`, `!blocca`).
+- **Untimeout** — `!untimeout @utente` (alias `!smuta`, `!unmute`, `!sblocca`).
+- **Warning permanenti** — `!warn @utente <motivo>` per richiamare un utente (salvato su database, sopravvive ai redeploy); `!warnings`/`!avvisi` per consultare i richiami; `!unwarn` per toglierne uno; `!clearwarn` per azzerarli tutti. Al terzo richiamo scatta un timeout automatico di 10 minuti.
+- **Pulizia messaggi** — `!purge <numero>` cancella in blocco gli ultimi messaggi di un canale (max 100, entro i 14 giorni per limite di Discord).
+- **Log di sicurezza** — ogni azione automatica viene registrata in un canale dedicato (`log-sicurezza`), storico sempre consultabile.
+
+### 🤖 Intelligenza artificiale
+- **`!ask <domanda>`** — chiedi qualsiasi cosa, risponde un'AI (Groq). Aperto a tutti.
+- **`!parla` / `!parla-off`** — modalità in cui il bot risponde ad ogni messaggio con una frase generata dall'AI, sempre diversa e scollegata dal contesto.
+- **`!duello @utente`** — sfida un altro membro a un duello epico in stile fantasy, raccontato dall'AI; il vincitore è deciso in modo equo (50/50) prima ancora di generare il racconto.
+
+### 🎉 Divertimento
+- **`!tux-on` / `!tux-off`** — ad ogni messaggio, il bot risponde con un'immagine di Tux a rotazione casuale.
+- **`!palla <domanda>`** (alias `!8ball`) — la classica palla magica, risponde sì/no/forse.
+
+### ℹ️ Utility
+- **`!server`** (alias `!serverinfo`) — statistiche del server: membri, canali, boost, data di creazione, proprietario.
+- **`!top`** (alias `!classifica`) — classifica dei membri più attivi per numero di messaggi, salvata su database (permanente).
+- **Messaggio di benvenuto** — `!welcome-on` / `!welcome-off` (solo mod) attiva/disattiva un embed di benvenuto per i nuovi membri, con immagine personalizzabile.
+- **`!help`** (alias `!comandi`) — pannello con tutti i comandi disponibili.
 
 ## Architettura
 
-Il bot è costruito con un sistema di plugin: `index.js` fa solo da motore (connessione a Discord, caricamento plugin, smistamento eventi), mentre ogni funzionalità vive in un file separato dentro `plugins/`.
+Il bot è costruito con un sistema di plugin: `index.js` fa solo da motore (connessione a Discord, caricamento plugin, smistamento eventi), mentre ogni funzionalità vive in un file separato dentro `plugins/`. `db.js` gestisce la connessione al database per i dati che devono restare permanenti tra un riavvio e l'altro.
 
 ```
-├── index.js          # motore del bot, carica automaticamente i plugin
-├── utils.js           # funzioni condivise (permessi, log di sicurezza)
+├── index.js            # motore del bot, carica automaticamente i plugin
+├── db.js                # connessione MongoDB e modelli dati permanenti
+├── utils.js              # funzioni condivise (permessi, log di sicurezza)
 ├── package.json
+├── assets/                # immagini e video usati dai plugin (embed, benvenuto, ecc.)
 └── plugins/
-    ├── lockdown.js     # !scudo-lock / !scudo-unlock
-    ├── antispam.js      # rilevamento spam automatico
-    ├── antinuke.js       # rilevamento azioni distruttive
-    ├── timeout.js       # !timeout / applicazione timeout manuale
-    └── untimeout.js       # !untimeout / rimozione timeout manuale
+    ├── antinuke.js         # rilevamento azioni distruttive
+    ├── antispam.js          # rilevamento spam automatico
+    ├── lockdown.js           # !scudo-lock / !scudo-unlock
+    ├── timeout.js             # !timeout / applicazione timeout manuale
+    ├── untimeout.js            # !untimeout / rimozione timeout manuale
+    ├── warn.js                  # !warn / !warnings / !unwarn / !clearwarn (permanente su DB)
+    ├── purge.js                  # !purge — cancellazione messaggi in blocco
+    ├── ai-ask.js                   # !ask — domande libere all'AI
+    ├── fun-parla.js                 # !parla / !parla-off — frasi assurde generate dall'AI
+    ├── duello.js                     # !duello — sfida epica generata dall'AI
+    ├── fun-tux.js                     # !tux-on / !tux-off — immagini Tux a rotazione
+    ├── palla.js                        # !palla / !8ball — palla magica
+    ├── server-info.js                   # !server / !serverinfo — statistiche server
+    ├── classifica.js                     # !top / !classifica — classifica messaggi (permanente su DB)
+    ├── welcome.js                         # !welcome-on / !welcome-off — messaggio di benvenuto
+    └── help.js                             # !help / !comandi — pannello comandi
 ```
 
-Per aggiungere una nuova funzionalità basta creare un nuovo file in `plugins/` che esporta `{ name, onMessage }` (per reagire ai messaggi) e/o `{ onAuditLogEntry }` (per reagire alle azioni nell'audit log) — viene caricato automaticamente all'avvio, senza toccare il resto del codice.
+Per aggiungere una nuova funzionalità basta creare un nuovo file in `plugins/` che esporta `{ name, onMessage }` (per reagire ai messaggi), `{ onAuditLogEntry }` (per reagire alle azioni nell'audit log) e/o `{ onMemberAdd }` (per reagire a nuovi membri) — viene caricato automaticamente all'avvio, senza toccare il resto del codice.
 
 ## Deploy
 
@@ -35,18 +68,24 @@ Per aggiungere una nuova funzionalità basta creare un nuovo file in `plugins/` 
    ```bash
    npm install
    ```
-2. Crea un'applicazione e un bot dal [Discord Developer Portal](https://discord.com/developers/applications), attivando l'intent **Message Content** e **Guild Moderation**.
-3. Imposta la variabile d'ambiente `DISCORD_TOKEN` con il token del bot (e opzionalmente `LOG_CHANNEL_ID` con l'ID del canale dove vuoi i log, se non usi un canale chiamato `log-sicurezza`).
-4. Avvia il bot:
+2. Crea un'applicazione e un bot dal [Discord Developer Portal](https://discord.com/developers/applications), attivando gli intent **Message Content**, **Server Members** e **Guild Moderation**.
+3. Crea un database gratuito su [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) (necessario per i dati permanenti come warning e classifica messaggi) e prendi la stringa di connessione.
+4. Crea una chiave API gratuita su [Groq](https://console.groq.com) (necessaria per i comandi AI).
+5. Imposta le variabili d'ambiente:
+   - `DISCORD_TOKEN` — token del bot
+   - `MONGODB_URI` — stringa di connessione MongoDB Atlas
+   - `GROQ_API_KEY` — chiave API Groq
+   - `LOG_CHANNEL_ID` (opzionale) — se non usi un canale chiamato `log-sicurezza`
+6. Avvia il bot:
    ```bash
    npm start
    ```
 
-Pensato per girare su servizi come [Render](https://render.com) (include un piccolo server HTTP per restare attivo sui piani gratuiti).
+Pensato per girare su servizi come [Render](https://render.com) (include un piccolo server HTTP per restare attivo sui piani gratuiti). Su MongoDB Atlas, ricorda di autorizzare l'accesso da qualsiasi IP (`0.0.0.0/0` in Network Access), dato che servizi come Render non hanno un IP fisso.
 
 ## Permessi richiesti
 
-Il ruolo del bot deve avere: `Gestisci messaggi`, `Modera membri` (timeout), `Gestisci ruoli`, `Visualizza registro di controllo`. Per funzionare correttamente contro altri bot o utenti con ruoli alti, il ruolo del bot deve stare **più in alto** nella gerarchia dei ruoli del server.
+Il ruolo del bot deve avere `Amministratore` (o, come minimo: `Gestisci messaggi`, `Modera membri`, `Gestisci ruoli`, `Gestisci canali`, `Visualizza registro di controllo`). Per funzionare correttamente contro altri bot o utenti con ruoli alti, il ruolo del bot deve stare **più in alto** nella gerarchia dei ruoli del server. Nota: Discord impedisce sempre di applicare un timeout a un membro con permesso Amministratore, indipendentemente dai permessi del bot — è una restrizione della piattaforma, non aggirabile.
 
 ## Nota
 
@@ -54,5 +93,5 @@ Progetto sviluppato per uso personale/community. Non è (ancora) pensato per una
 
 ## Autori
 
-- **Creator:** [bilottaa12-creator] 
-- **Contributors:** [Yervinboss] 
+- **Creator:** [bilottaa12-creator]
+- **Contributors:** [Yervinboss]
