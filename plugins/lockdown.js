@@ -1,44 +1,31 @@
 const { eModeratoreOAdmin, inviaLogSicurezza } = require('../utils');
 
-async function salvaSnapshot(guild, store) {
-    try {
-        const channels = await guild.channels.fetch();
-        const snapshot = {};
-        for (const [channelId, channel] of channels) {
-            if (channel && channel.isTextBased() && !channel.isThread()) {
-                const override = channel.permissionOverwrites.resolve(guild.roles.everyone);
-                snapshot[channelId] = {
-                    name: channel.name,
-                    ViewChannel: override?.allow.has('ViewChannel') ? true : override?.deny.has('ViewChannel') ? false : null,
-                    SendMessages: override?.allow.has('SendMessages') ? true : override?.deny.has('SendMessages') ? false : null,
-                    SendMessagesInThreads: override?.allow.has('SendMessagesInThreads') ? true : override?.deny.has('SendMessagesInThreads') ? false : null,
-                    AddReactions: override?.allow.has('AddReactions') ? true : override?.deny.has('AddReactions') ? false : null
-                };
-            }
-        }
-        store.lockdownSnapshot = snapshot;
-    } catch (error) {
-        console.error('[ERRORE SNAPSHOT]:', error);
-    }
+function getGuildStore(store, guildId) {
+    if (!store[guildId]) store[guildId] = {};
+    return store[guildId];
 }
 
-async function bloccareCanalyPublici(guild, store) {
+async function salvaSnapshotEBlocca(guild, guildStore) {
     try {
-        if (!store.lockdownSnapshot) return;
-        
         const channels = await guild.channels.fetch();
+        guildStore.lockedChannels = []; // Salva solo i canali effettivamente modificati
+
         for (const [channelId, channel] of channels) {
+            // Controlla solo i canali testuali e non le discussioni/thread
             if (channel && channel.isTextBased() && !channel.isThread()) {
-                const statoSalvato = store.lockdownSnapshot[channelId];
-                // Chiudi solo se il canale era completamente pubblico (null per tutti i permessi)
-                if (statoSalvato && 
-                    statoSalvato.ViewChannel === null && 
-                    statoSalvato.SendMessages === null && 
-                    statoSalvato.SendMessagesInThreads === null && 
-                    statoSalvato.AddReactions === null) {
+                const override = channel.permissionOverwrites.resolve(guild.roles.everyone);
+
+                // Controlla se il canale è visibile e scrivibile di base
+                const puoVedere = !override?.deny.has('ViewChannel');
+                const puoInviare = !override?.deny.has('SendMessages');
+
+                // Se il canale è già nascosto o chiuso (es. staff/regolamento), NON lo tocca!
+                if (puoVedere && puoInviare) {
+                    guildStore.lockedChannels.push(channelId);
+
                     try {
+                        // NOTA: Non tocchiamo ViewChannel! Modifica solo la scrittura.
                         await channel.permissionOverwrites.edit(guild.roles.everyone, {
-                            ViewChannel: false,
                             SendMessages: false,
                             SendMessagesInThreads: false,
                             AddReactions: false
@@ -54,30 +41,27 @@ async function bloccareCanalyPublici(guild, store) {
     }
 }
 
-async function ripristinareDaSnapshot(guild, store) {
-    if (!store.lockdownSnapshot) return;
+async function ripristinareDaSnapshot(guild, guildStore) {
+    if (!guildStore.lockedChannels || guildStore.lockedChannels.length === 0) return;
 
     try {
-        const channels = await guild.channels.fetch();
-        for (const [channelId, channel] of channels) {
-            if (channel && channel.isTextBased() && !channel.isThread()) {
+        for (const channelId of guildStore.lockedChannels) {
+            const channel = guild.channels.cache.get(channelId);
+            if (channel) {
                 try {
-                    const stato = store.lockdownSnapshot[channelId];
-                    if (stato) {
-                        // Ripristina ESATTAMENTE com'era (anche neutro/null)
-                        await channel.permissionOverwrites.edit(guild.roles.everyone, {
-                            ViewChannel: stato.ViewChannel,
-                            SendMessages: stato.SendMessages,
-                            SendMessagesInThreads: stato.SendMessagesInThreads,
-                            AddReactions: stato.AddReactions
-                        });
-                    }
+                    // Impostando a null rimuoviamo il blocco temporaneo
+                    // e ripristiniamo i permessi originali/della categoria
+                    await channel.permissionOverwrites.edit(guild.roles.everyone, {
+                        SendMessages: null,
+                        SendMessagesInThreads: null,
+                        AddReactions: null
+                    });
                 } catch (err) {
                     console.error(`[ERRORE RIPRISTINO] Canale ${channel.name}:`, err.message);
                 }
             }
         }
-        store.lockdownSnapshot = null;
+        guildStore.lockedChannels = []; // Reset memoria
     } catch (error) {
         console.error('[ERRORE RIPRISTINO]:', error);
     }
@@ -87,19 +71,18 @@ module.exports = {
     name: 'lockdown',
 
     async onMessage(message, ctx) {
-        const { store } = ctx;
-        if (store.serverBloccato === undefined) store.serverBloccato = false;
+        const guildStore = getGuildStore(ctx.store, message.guildId);
+        if (guildStore.serverBloccato === undefined) guildStore.serverBloccato = false;
 
         if (message.content.trim() === '!scudo-lock') {
-            if (!eModeratoreOAdmin(message.member)) {
+            if (!(await eModeratoreOAdmin(message.member))) {
                 await message.reply('❌ Solo i Moderatori e gli Amministratori possono usare questo comando.');
                 return true;
             }
-            store.serverBloccato = true;
+            guildStore.serverBloccato = true;
             await message.reply('🔒 **ATTIVAZIONE LOCKDOWN IN CORSO...**');
-            await salvaSnapshot(message.guild, store);
-            await bloccareCanalyPublici(message.guild, store);
-            await message.channel.send('🚨 **SERVER BLINDATO!** I canali pubblici sono stati chiusi.');
+            await salvaSnapshotEBlocca(message.guild, guildStore);
+            await message.channel.send('🚨 **SERVER BLINDATO!** La scrittura nei canali pubblici è stata disattivata.');
             await inviaLogSicurezza(message.guild,
                 `🔒 **Lockdown attivato** da <@${message.author.id}> (${message.author.tag})`
             );
@@ -107,22 +90,22 @@ module.exports = {
         }
 
         if (message.content.trim() === '!scudo-unlock') {
-            if (!eModeratoreOAdmin(message.member)) {
+            if (!(await eModeratoreOAdmin(message.member))) {
                 await message.reply('❌ Solo i Moderatori e gli Amministratori possono usare questo comando.');
                 return true;
             }
-            store.serverBloccato = false;
+            guildStore.serverBloccato = false;
             await message.reply('🔓 **DISATTIVAZIONE LOCKDOWN IN CORSO...**');
-            await ripristinareDaSnapshot(message.guild, store);
-            await message.channel.send('✅ **LOCKDOWN DISATTIVATO!** I canali sono stati ripristinati al loro stato precedente.');
+            await ripristinareDaSnapshot(message.guild, guildStore);
+            await message.channel.send('✅ **LOCKDOWN DISATTIVATO!** I canali sono stati ripristinati.');
             await inviaLogSicurezza(message.guild,
                 `🔓 **Lockdown disattivato** da <@${message.author.id}> (${message.author.tag})`
             );
             return true;
         }
 
-        if (store.serverBloccato) {
-            if (!eModeratoreOAdmin(message.member)) {
+        if (guildStore.serverBloccato) {
+            if (!(await eModeratoreOAdmin(message.member))) {
                 try {
                     await message.delete();
                 } catch (err) {
