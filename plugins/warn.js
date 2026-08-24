@@ -1,25 +1,14 @@
 const { eModeratoreOAdmin, inviaLogSicurezza } = require('../utils');
+const { Warning } = require('../db');
 
 const SOGLIA_ESCALATION = 3;
 const DURATA_TIMEOUT_MS = 10 * 60 * 1000; // 10 minuti
-
-function getGuildStore(store, guildId) {
-    if (!store[guildId]) store[guildId] = {};
-    return store[guildId];
-}
-
-function getWarningsUtente(guildStore, userId) {
-    if (!guildStore.warnings) guildStore.warnings = {};
-    if (!guildStore.warnings[userId]) guildStore.warnings[userId] = [];
-    return guildStore.warnings[userId];
-}
 
 module.exports = {
     name: 'warn',
 
     async onMessage(message, ctx) {
         const content = message.content.trim();
-        const guildStore = getGuildStore(ctx.store, message.guildId);
 
         // !warn @utente <motivo>
         if (content.startsWith('!warn ') || content === '!warn') {
@@ -34,32 +23,39 @@ module.exports = {
                 return true;
             }
 
-            // Rimuove la menzione dal testo per isolare il motivo
             const motivo = content
                 .replace('!warn', '')
                 .replace(/<@!?\d+>/, '')
                 .trim() || 'Nessun motivo specificato';
 
-            const warnings = getWarningsUtente(guildStore, target.id);
-            warnings.push({
-                motivo,
-                moderatore: message.author.tag,
-                data: new Date().toISOString()
-            });
+            let numeroRichiami;
+            try {
+                await Warning.create({
+                    guildId: message.guildId,
+                    userId: target.id,
+                    motivo,
+                    moderatore: message.author.tag
+                });
+                numeroRichiami = await Warning.countDocuments({ guildId: message.guildId, userId: target.id });
+            } catch (err) {
+                console.error('[ERRORE WARN - salvataggio]:', err.message);
+                await message.reply('⚠️ Errore nel salvare il richiamo sul database. Riprova tra poco.');
+                return true;
+            }
 
             await message.reply(
-                `⚠️ **${target.displayName}** ha ricevuto un richiamo (${warnings.length}/${SOGLIA_ESCALATION}).\n` +
+                `⚠️ **${target.displayName}** ha ricevuto un richiamo (${numeroRichiami}/${SOGLIA_ESCALATION}).\n` +
                 `Motivo: ${motivo}`
             );
 
             await inviaLogSicurezza(
                 message.guild,
                 `⚠️ **WARN**: ${target.displayName} richiamato da ${message.author.tag}. ` +
-                `Motivo: ${motivo}. Totale richiami: ${warnings.length}.`
+                `Motivo: ${motivo}. Totale richiami: ${numeroRichiami}.`
             );
 
             // Escalation al terzo richiamo
-            if (warnings.length >= SOGLIA_ESCALATION) {
+            if (numeroRichiami >= SOGLIA_ESCALATION) {
                 try {
                     await target.timeout(DURATA_TIMEOUT_MS, `Escalation automatica: ${SOGLIA_ESCALATION} richiami raggiunti`);
                     await message.channel.send(
@@ -73,7 +69,7 @@ module.exports = {
                     console.error('[ERRORE WARN - escalation]:', err.message);
                     await inviaLogSicurezza(
                         message.guild,
-                        `⚠️ Escalation fallita per ${target.displayName}: verifica i permessi del bot (serve "Modera membri").`
+                        `⚠️ Escalation fallita per ${target.displayName}: ${err.message}`
                     );
                 }
             }
@@ -84,7 +80,15 @@ module.exports = {
         // !warnings @utente (alias !avvisi)
         if (content.startsWith('!warnings') || content.startsWith('!avvisi')) {
             const target = message.mentions.members?.first() || message.member;
-            const warnings = getWarningsUtente(guildStore, target.id);
+
+            let warnings;
+            try {
+                warnings = await Warning.find({ guildId: message.guildId, userId: target.id }).sort({ data: 1 });
+            } catch (err) {
+                console.error('[ERRORE WARN - lettura]:', err.message);
+                await message.reply('⚠️ Errore nel recuperare i richiami. Riprova tra poco.');
+                return true;
+            }
 
             if (warnings.length === 0) {
                 await message.reply(`✅ **${target.displayName}** non ha nessun richiamo.`);
@@ -114,13 +118,20 @@ module.exports = {
                 return true;
             }
 
-            const warnings = getWarningsUtente(guildStore, target.id);
+            let warnings;
+            try {
+                warnings = await Warning.find({ guildId: message.guildId, userId: target.id }).sort({ data: 1 });
+            } catch (err) {
+                console.error('[ERRORE UNWARN - lettura]:', err.message);
+                await message.reply('⚠️ Errore nel recuperare i richiami. Riprova tra poco.');
+                return true;
+            }
+
             if (warnings.length === 0) {
                 await message.reply(`✅ **${target.displayName}** non ha richiami da togliere.`);
                 return true;
             }
 
-            // Estrae un eventuale numero dal comando (es. "!unwarn @utente 2")
             const numeroMatch = content.match(/\s(\d+)\s*$/);
             const indice = numeroMatch ? parseInt(numeroMatch[1], 10) - 1 : warnings.length - 1;
 
@@ -129,11 +140,18 @@ module.exports = {
                 return true;
             }
 
-            const [rimosso] = warnings.splice(indice, 1);
+            const rimosso = warnings[indice];
+            try {
+                await Warning.deleteOne({ _id: rimosso._id });
+            } catch (err) {
+                console.error('[ERRORE UNWARN - cancellazione]:', err.message);
+                await message.reply('⚠️ Errore nel rimuovere il richiamo. Riprova tra poco.');
+                return true;
+            }
 
             await message.reply(
                 `✅ Rimosso richiamo **${indice + 1}** di **${target.displayName}** ("${rimosso.motivo}"). ` +
-                `Richiami rimanenti: ${warnings.length}/${SOGLIA_ESCALATION}.`
+                `Richiami rimanenti: ${warnings.length - 1}/${SOGLIA_ESCALATION}.`
             );
             await inviaLogSicurezza(
                 message.guild,
@@ -155,8 +173,13 @@ module.exports = {
                 return true;
             }
 
-            if (!guildStore.warnings) guildStore.warnings = {};
-            guildStore.warnings[target.id] = [];
+            try {
+                await Warning.deleteMany({ guildId: message.guildId, userId: target.id });
+            } catch (err) {
+                console.error('[ERRORE CLEARWARN]:', err.message);
+                await message.reply('⚠️ Errore nell\'azzerare i richiami. Riprova tra poco.');
+                return true;
+            }
 
             await message.reply(`✅ Richiami di **${target.displayName}** azzerati.`);
             await inviaLogSicurezza(
