@@ -17,8 +17,7 @@ const client = new Client({
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildMembers,
-        GatewayIntentBits.GuildModeration,
-        GatewayIntentBits.GuildMessageReactions
+        GatewayIntentBits.GuildModeration
     ],
     partials: [
         Partials.Message,
@@ -72,31 +71,7 @@ client.on('messageCreate', async (message) => {
     }
 });
 
-// Event: messageReactionAdd - per i ruoli con emoji
-client.on('messageReactionAdd', async (reaction, user) => {
-    for (const plugin of plugins) {
-        if (plugin.onReactionAdd) {
-            try {
-                await plugin.onReactionAdd(reaction, user, { store, client });
-            } catch (err) {
-                console.error(`Errore in plugin ${plugin.name} (reaction add):`, err.message);
-            }
-        }
-    }
-});
 
-// Event: messageReactionRemove - per rimuovere ruoli con emoji
-client.on('messageReactionRemove', async (reaction, user) => {
-    for (const plugin of plugins) {
-        if (plugin.onReactionRemove) {
-            try {
-                await plugin.onReactionRemove(reaction, user, { store, client });
-            } catch (err) {
-                console.error(`Errore in plugin ${plugin.name} (reaction remove):`, err.message);
-            }
-        }
-    }
-});
 
 // Event: guildAuditLogEntryCreate
 client.on('guildAuditLogEntryCreate', async (entry, guild) => {
@@ -106,6 +81,19 @@ client.on('guildAuditLogEntryCreate', async (entry, guild) => {
                 await plugin.onAuditLogEntry(entry, guild, { store, client });
             } catch (err) {
                 console.error(`Errore in plugin ${plugin.name} (audit log):`, err.message);
+            }
+        }
+    }
+});
+
+// Event: guildMemberAdd - qualcuno è entrato nel server
+client.on('guildMemberAdd', async (member) => {
+    for (const plugin of plugins) {
+        if (plugin.onMemberAdd) {
+            try {
+                await plugin.onMemberAdd(member, { store, client });
+            } catch (err) {
+                console.error(`Errore in plugin ${plugin.name} (member add):`, err.message);
             }
         }
     }
