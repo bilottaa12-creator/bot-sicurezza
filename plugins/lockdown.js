@@ -8,23 +8,22 @@ function getGuildStore(store, guildId) {
 async function salvaSnapshotEBlocca(guild, guildStore) {
     try {
         const channels = await guild.channels.fetch();
-        guildStore.lockedChannels = []; // Salva solo i canali effettivamente modificati
+        guildStore.lockedChannels = []; // Canali effettivamente modificati
+        guildStore.modOverridesAggiunti = []; // {channelId, roleId} aggiunti solo per i mod
+
+        // Ruoli che contengono "mod" nel nome (stessa logica di eModeratoreOAdmin)
+        const ruoliMod = guild.roles.cache.filter(r => r.name.toLowerCase().includes('mod'));
 
         for (const [channelId, channel] of channels) {
-            // Controlla solo i canali testuali e non le discussioni/thread
             if (channel && channel.isTextBased() && !channel.isThread()) {
                 const override = channel.permissionOverwrites.resolve(guild.roles.everyone);
-
-                // Controlla se il canale è visibile e scrivibile di base
                 const puoVedere = !override?.deny.has('ViewChannel');
                 const puoInviare = !override?.deny.has('SendMessages');
 
-                // Se il canale è già nascosto o chiuso (es. staff/regolamento), NON lo tocca!
                 if (puoVedere && puoInviare) {
                     guildStore.lockedChannels.push(channelId);
 
                     try {
-                        // NOTA: Non tocchiamo ViewChannel! Modifica solo la scrittura.
                         await channel.permissionOverwrites.edit(guild.roles.everyone, {
                             SendMessages: false,
                             SendMessagesInThreads: false,
@@ -32,6 +31,25 @@ async function salvaSnapshotEBlocca(guild, guildStore) {
                         });
                     } catch (err) {
                         console.error(`[ERRORE PERMESSI] Canale ${channel.name}:`, err.message);
+                    }
+
+                    // Per ogni ruolo "mod" senza già un override esplicito su questo canale,
+                    // aggiungiamo un permesso esplicito così restano sempre in grado di scrivere,
+                    // anche senza il permesso Amministratore reale su Discord.
+                    for (const [, ruolo] of ruoliMod) {
+                        const overrideEsistente = channel.permissionOverwrites.resolve(ruolo.id);
+                        if (!overrideEsistente) {
+                            try {
+                                await channel.permissionOverwrites.edit(ruolo, {
+                                    SendMessages: true,
+                                    SendMessagesInThreads: true,
+                                    AddReactions: true
+                                });
+                                guildStore.modOverridesAggiunti.push({ channelId, roleId: ruolo.id });
+                            } catch (err) {
+                                console.error(`[ERRORE PERMESSI MOD] Canale ${channel.name}, ruolo ${ruolo.name}:`, err.message);
+                            }
+                        }
                     }
                 }
             }
@@ -49,8 +67,6 @@ async function ripristinareDaSnapshot(guild, guildStore) {
             const channel = guild.channels.cache.get(channelId);
             if (channel) {
                 try {
-                    // Impostando a null rimuoviamo il blocco temporaneo
-                    // e ripristiniamo i permessi originali/della categoria
                     await channel.permissionOverwrites.edit(guild.roles.everyone, {
                         SendMessages: null,
                         SendMessagesInThreads: null,
@@ -61,7 +77,27 @@ async function ripristinareDaSnapshot(guild, guildStore) {
                 }
             }
         }
-        guildStore.lockedChannels = []; // Reset memoria
+
+        // Rimuove SOLO i permessi mod che avevamo aggiunto noi durante il lock
+        if (guildStore.modOverridesAggiunti) {
+            for (const { channelId, roleId } of guildStore.modOverridesAggiunti) {
+                const channel = guild.channels.cache.get(channelId);
+                if (channel) {
+                    try {
+                        await channel.permissionOverwrites.edit(roleId, {
+                            SendMessages: null,
+                            SendMessagesInThreads: null,
+                            AddReactions: null
+                        });
+                    } catch (err) {
+                        console.error(`[ERRORE RIPRISTINO MOD] Canale ${channel.name}:`, err.message);
+                    }
+                }
+            }
+        }
+
+        guildStore.lockedChannels = [];
+        guildStore.modOverridesAggiunti = [];
     } catch (error) {
         console.error('[ERRORE RIPRISTINO]:', error);
     }
