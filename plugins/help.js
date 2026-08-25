@@ -5,7 +5,7 @@ module.exports = {
 
     async onMessage(message, ctx) {
         const content = message.content.trim();
-        if (content !== '!help' && content !== '!comandi') return false;
+        if (content !== '!aiuto' && content !== '!comandi') return false;
 
         // Link diretto al file mp4 (raw GitHub, permanente)
         const videoUrl = 'https://raw.githubusercontent.com/bilottaa12-creator/bot-sicurezza/main/assets/help-banner.mp4';
@@ -44,7 +44,8 @@ module.exports = {
                     name: 'ℹ️ — UTILITY —',
                     value:
                         '`!server` → Statistiche del server (membri, canali, boost, ecc.) (alias `!serverinfo`)\n' +
-                        '`!top` → Classifica dei membri più attivi per messaggi (alias `!classifica`)'
+                        '`!top` → Classifica dei membri più attivi per messaggi (alias `!classifica`)\n' +
+                        '`!rank [@utente]` → La tua posizione in classifica (o quella di qualcun altro)'
                 }
             )
             .setFooter({ text: 'Solo mod/admin possono usare i comandi di sicurezza' });
@@ -55,7 +56,7 @@ module.exports = {
             // Secondo messaggio: il pannello comandi
             await message.channel.send({ embeds: [embed] });
         } catch (err) {
-            console.error('[ERRORE HELP]:', err.message);
+            console.error('[ERRORE AIUTO]:', err.message);
             // Fallback: manda solo l'embed se il video fallisce
             await message.channel.send({ embeds: [embed] });
         }
