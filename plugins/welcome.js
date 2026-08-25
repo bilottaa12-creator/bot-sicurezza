@@ -2,8 +2,8 @@ const { EmbedBuilder } = require('discord.js');
 const { eModeratoreOAdmin } = require('../utils');
 const { GuildSettings } = require('../db');
 
-// Immagine di sfondo per l'embed di benvenuto (sostituiscila con la tua)
-const IMMAGINE_BENVENUTO = 'https://raw.githubusercontent.com/bilottaa12-creator/bot-sicurezza/main/assets/benvenuto.png';
+// Immagine di sfondo per l'embed di benvenuto
+const IMMAGINE_BENVENUTO = 'https://raw.githubusercontent.com/bilottaa12-creator/bot-sicurezza/main/assets/eva_rei.gif';
 
 async function isWelcomeAttivo(guildId) {
     const settings = await GuildSettings.findOne({ guildId });
