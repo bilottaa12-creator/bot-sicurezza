@@ -14,7 +14,7 @@ module.exports = {
 
         // I mod/admin sono esenti SOLO se umani. Un bot con permessi alti
         // (es. Amministratore) non deve mai bypassare il controllo anti-spam.
-        if (!message.author.bot && eModeratoreOAdmin(message.member)) return false;
+        if (!message.author.bot && (await eModeratoreOAdmin(message.member))) return false;
 
         // Non serve controllare i comandi del plugin lockdown
         if (message.content.trim() === '!scudo-lock' || message.content.trim() === '!scudo-unlock') {
