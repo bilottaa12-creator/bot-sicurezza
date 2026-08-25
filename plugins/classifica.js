@@ -19,6 +19,54 @@ module.exports = {
             console.error('[ERRORE CLASSIFICA - conteggio]:', err.message);
         });
 
+        if (content === '!rank' || content.startsWith('!rank ')) {
+            const target = message.mentions.members?.first() || message.member;
+
+            try {
+                const voceTarget = await MessageCount.findOne({ guildId: message.guildId, userId: target.id });
+
+                if (!voceTarget || voceTarget.count === 0) {
+                    await message.reply(`📊 **${target.displayName}** non ha ancora nessun messaggio contato.`);
+                    return true;
+                }
+
+                const posizione = 1 + await MessageCount.countDocuments({
+                    guildId: message.guildId,
+                    count: { $gt: voceTarget.count }
+                });
+
+                const totalePartecipanti = await MessageCount.countDocuments({ guildId: message.guildId });
+
+                // Trova la persona subito sopra in classifica, per calcolare quanti messaggi mancano
+                const prossimo = await MessageCount.findOne({
+                    guildId: message.guildId,
+                    count: { $gt: voceTarget.count }
+                }).sort({ count: 1 });
+
+                let descrizione = `Posizione **#${posizione}** su ${totalePartecipanti} — **${voceTarget.count}** messaggi totali.`;
+
+                if (prossimo) {
+                    const distacco = prossimo.count - voceTarget.count;
+                    descrizione += `\nTi mancano **${distacco}** messaggi per superare il prossimo in classifica.`;
+                } else {
+                    descrizione += `\n🥇 Sei primo in classifica!`;
+                }
+
+                const embed = new EmbedBuilder()
+                    .setColor(0x5865F2)
+                    .setTitle(`📊 Posizione di ${target.displayName}`)
+                    .setDescription(descrizione);
+
+                await message.reply({ embeds: [embed] });
+
+            } catch (err) {
+                console.error('[ERRORE CLASSIFICA - rank]:', err.message);
+                await message.reply('⚠️ Errore nel recuperare la posizione. Riprova tra poco.');
+            }
+
+            return true;
+        }
+
         if (content !== '!top' && content !== '!classifica') return false;
 
         try {
