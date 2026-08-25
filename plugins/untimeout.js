@@ -14,7 +14,7 @@ module.exports = {
 
         // 🛡️ SICUREZZA: solo Staff (permessi di moderazione/admin) può rimuovere un timeout
         const haPermessoMod = message.member.permissions.has('ModerateMembers') || message.member.permissions.has('ManageMessages');
-        if (!eModeratoreOAdmin(message.member) && !haPermessoMod) {
+        if (!(await eModeratoreOAdmin(message.member)) && !haPermessoMod) {
             await message.reply('❌ *Operazione negata. Questo comando richiede permessi di livello Staff.*');
             return true;
         }
