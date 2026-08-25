@@ -15,7 +15,7 @@ module.exports = {
 
         // 🛡️ SICUREZZA: solo Staff può dare un timeout
         const haPermessoMod = message.member.permissions.has('ModerateMembers') || message.member.permissions.has('ManageMessages');
-        if (!eModeratoreOAdmin(message.member) && !haPermessoMod) {
+        if (!(await eModeratoreOAdmin(message.member)) && !haPermessoMod) {
             await message.reply('❌ *Operazione negata. Questo comando richiede permessi di livello Staff.*');
             return true;
         }
@@ -27,7 +27,7 @@ module.exports = {
         }
 
         // Non si può dare il timeout a chi ha permessi alti quanto o più di te
-        if (eModeratoreOAdmin(utenteTaggato)) {
+        if (await eModeratoreOAdmin(utenteTaggato)) {
             await message.reply('❌ *Non puoi mettere in Time-out un altro membro dello Staff.*');
             return true;
         }
