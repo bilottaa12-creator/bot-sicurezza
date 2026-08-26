@@ -3,7 +3,7 @@ const { eModeratoreOAdmin } = require('../utils');
 const { GuildSettings } = require('../db');
 
 // Immagine di sfondo per l'embed di benvenuto
-const IMMAGINE_BENVENUTO = 'https://raw.githubusercontent.com/bilottaa12-creator/bot-sicurezza/main/assets/eva_rei.gif';
+const IMMAGINE_BENVENUTO = 'https://raw.githubusercontent.com/bilottaa12-creator/bot-sicurezza/main/assets/eva.rei.gif';
 
 async function isWelcomeAttivo(guildId) {
     const settings = await GuildSettings.findOne({ guildId });
