@@ -72,6 +72,23 @@ module.exports = {
             return true;
         }
 
+        if (content.startsWith('!antilink-test ')) {
+            if (!(await eModeratoreOAdmin(message.member))) {
+                await message.reply('❌ Solo mod/admin');
+                return true;
+            }
+
+            const linkDaTestare = content.replace('!antilink-test', '').trim();
+            const motivoTest = eLinkSospetto(linkDaTestare);
+
+            await message.reply(
+                motivoTest
+                    ? `🚫 Questo link **verrebbe bloccato** — motivo: **${motivoTest}**.`
+                    : `✅ Questo link **non verrebbe bloccato**.`
+            );
+            return true;
+        }
+
         // Controllo passivo su ogni messaggio (solo se attivo e non è un mod)
         if (await eModeratoreOAdmin(message.member)) return false;
 
