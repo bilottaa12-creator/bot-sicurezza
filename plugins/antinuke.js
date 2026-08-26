@@ -1,6 +1,11 @@
 const { AuditLogEvent } = require('discord.js');
 const { inviaLogSicurezza } = require('../utils');
 
+function getGuildStore(store, guildId) {
+    if (!store[guildId]) store[guildId] = {};
+    return store[guildId];
+}
+
 // ---- CONFIGURAZIONE ----
 const SOGLIA_AZIONI = 3;       // quante azioni pericolose...
 const FINESTRA_MS = 10000;     // ...in quanti millisecondi = probabile nuke/raid
@@ -28,17 +33,17 @@ module.exports = {
         if (executorId === guild.ownerId) return;        // non tocchiamo il proprietario del server
         if (executorId === guild.client.user.id) return; // non blocchiamo il nostro stesso bot
 
-        const { store } = ctx;
-        if (!store.antinuke) store.antinuke = new Map(); // executorId -> [timestamp, timestamp, ...]
+        const guildStore = getGuildStore(ctx.store, guild.id);
+        if (!guildStore.antinuke) guildStore.antinuke = new Map(); // executorId -> [timestamp, timestamp, ...]
 
         const ora = Date.now();
-        const azioni = (store.antinuke.get(executorId) || []).filter(t => ora - t < FINESTRA_MS);
+        const azioni = (guildStore.antinuke.get(executorId) || []).filter(t => ora - t < FINESTRA_MS);
         azioni.push(ora);
-        store.antinuke.set(executorId, azioni);
+        guildStore.antinuke.set(executorId, azioni);
 
         if (azioni.length < SOGLIA_AZIONI) return; // ancora sotto soglia, non fare nulla
 
-        store.antinuke.set(executorId, []); // reset, evita di ripetere l'azione ad ogni evento successivo
+        guildStore.antinuke.set(executorId, []); // reset, evita di ripetere l'azione ad ogni evento successivo
 
         const member = await guild.members.fetch(executorId).catch(() => null);
 
