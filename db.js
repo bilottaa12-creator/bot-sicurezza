@@ -39,7 +39,8 @@ const Warning = mongoose.model('Warning', warningSchema);
 // Impostazioni del server (es. benvenuto attivo/disattivo)
 const guildSettingsSchema = new mongoose.Schema({
     guildId: { type: String, required: true, unique: true },
-    welcomeEnabled: { type: Boolean, default: false }
+    welcomeEnabled: { type: Boolean, default: false },
+    antilinkEnabled: { type: Boolean, default: false }
 });
 
 const GuildSettings = mongoose.model('GuildSettings', guildSettingsSchema);
