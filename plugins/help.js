@@ -26,7 +26,8 @@ module.exports = {
                         '`!warn @utente <motivo>` → Richiama un utente (al 3° richiamo: timeout automatico)\n' +
                         '`!warnings @utente` → Vedi i richiami di qualcuno (alias `!avvisi`)\n' +
                         '`!unwarn @utente [numero]` → Toglie un richiamo (senza numero, toglie l\'ultimo)\n' +
-                        '`!clearwarn @utente` → Azzera tutti i richiami di un utente'
+                        '`!clearwarn @utente` → Azzera tutti i richiami di un utente\n' +
+                        '`!antilink-on` / `!antilink-off` → Blocca link sospetti (tracciamento, phishing, accorciatori)'
                 },
                 {
                     name: '🎉 — DIVERTIMENTO —',
