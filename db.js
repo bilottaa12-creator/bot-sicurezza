@@ -45,4 +45,14 @@ const guildSettingsSchema = new mongoose.Schema({
 
 const GuildSettings = mongoose.model('GuildSettings', guildSettingsSchema);
 
-module.exports = { connectDB, MessageCount, Warning, GuildSettings };
+// Punteggi del quiz di cultura generale (!quiz)
+const quizScoreSchema = new mongoose.Schema({
+    guildId: { type: String, required: true },
+    userId: { type: String, required: true },
+    vittorie: { type: Number, default: 0 }
+});
+quizScoreSchema.index({ guildId: 1, userId: 1 }, { unique: true });
+
+const QuizScore = mongoose.model('QuizScore', quizScoreSchema);
+
+module.exports = { connectDB, MessageCount, Warning, GuildSettings, QuizScore };
