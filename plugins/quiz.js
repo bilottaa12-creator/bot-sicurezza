@@ -21,15 +21,17 @@ async function generaDomandaAI() {
                 'Authorization': 'Bearer ' + process.env.GROQ_API_KEY
             },
             body: JSON.stringify({
-                model: 'openai/gpt-oss-20b',
-                reasoning_effort: 'low',
+                model: 'openai/gpt-oss-120b',
+                reasoning_effort: 'medium',
                 messages: [
                     {
                         role: 'system',
                         content:
                             'Genera UNA domanda di cultura generale (storia, geografia, scienza, arte, sport, ' +
                             'attualità, cinema) in italiano, con esattamente 4 opzioni di risposta, di cui solo ' +
-                            'una corretta. Scegli TU casualmente il livello di difficoltà tra "facile", "medio" ' +
+                            'una corretta. USA SOLO fatti che conosci con certezza assoluta — se hai anche il ' +
+                            'minimo dubbio su un fatto, scegline un altro più sicuro. Non inventare mai dettagli. ' +
+                            'Scegli TU casualmente il livello di difficoltà tra "facile", "medio" ' +
                             'e "difficile", variando ad ogni domanda, e varia anche l\'argomento. Rispondi SOLO ' +
                             'con un oggetto JSON valido, senza markdown, senza testo attorno, in questo formato ' +
                             'esatto: {"domanda": "...", "opzioni": ["...", "...", "...", "..."], "corretta": 0, ' +
@@ -38,8 +40,8 @@ async function generaDomandaAI() {
                     },
                     { role: 'user', content: 'Genera la domanda.' }
                 ],
-                max_tokens: 400,
-                temperature: 1.0
+                max_tokens: 600,
+                temperature: 0.8
             })
         });
 
