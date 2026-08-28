@@ -49,7 +49,8 @@ const GuildSettings = mongoose.model('GuildSettings', guildSettingsSchema);
 const quizScoreSchema = new mongoose.Schema({
     guildId: { type: String, required: true },
     userId: { type: String, required: true },
-    vittorie: { type: Number, default: 0 }
+    vittorie: { type: Number, default: 0 },
+    punti: { type: Number, default: 0 } // ponderati per difficoltà: facile 1, medio 2, difficile 3
 });
 quizScoreSchema.index({ guildId: 1, userId: 1 }, { unique: true });
 
