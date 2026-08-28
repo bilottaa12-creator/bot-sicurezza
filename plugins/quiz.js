@@ -3,6 +3,7 @@ const { QuizScore } = require('../db');
 
 const TEMPO_LIMITE_MS = 30000; // 30 secondi per rispondere
 const LETTERE = ['A', 'B', 'C', 'D'];
+const PUNTI_PER_DIFFICOLTA = { facile: 1, medio: 2, difficile: 3 };
 
 function getGuildStore(store, guildId) {
     if (!store[guildId]) store[guildId] = {};
@@ -28,10 +29,12 @@ async function generaDomandaAI() {
                         content:
                             'Genera UNA domanda di cultura generale (storia, geografia, scienza, arte, sport, ' +
                             'attualità, cinema) in italiano, con esattamente 4 opzioni di risposta, di cui solo ' +
-                            'una corretta. Varia sempre argomento e difficoltà (facile o media). Rispondi SOLO ' +
+                            'una corretta. Scegli TU casualmente il livello di difficoltà tra "facile", "medio" ' +
+                            'e "difficile", variando ad ogni domanda, e varia anche l\'argomento. Rispondi SOLO ' +
                             'con un oggetto JSON valido, senza markdown, senza testo attorno, in questo formato ' +
-                            'esatto: {"domanda": "...", "opzioni": ["...", "...", "...", "..."], "corretta": 0}. ' +
-                            'Il campo "corretta" è l\'indice (0, 1, 2 o 3) dell\'opzione giusta nell\'array.'
+                            'esatto: {"domanda": "...", "opzioni": ["...", "...", "...", "..."], "corretta": 0, ' +
+                            '"difficolta": "facile"}. Il campo "corretta" è l\'indice (0, 1, 2 o 3) dell\'opzione ' +
+                            'giusta nell\'array. Il campo "difficolta" deve essere esattamente una di: "facile", "medio", "difficile".'
                     },
                     { role: 'user', content: 'Genera la domanda.' }
                 ],
@@ -51,7 +54,8 @@ async function generaDomandaAI() {
         const parsed = JSON.parse(pulito);
 
         if (!parsed.domanda || !Array.isArray(parsed.opzioni) || parsed.opzioni.length !== 4 ||
-            typeof parsed.corretta !== 'number' || parsed.corretta < 0 || parsed.corretta > 3) {
+            typeof parsed.corretta !== 'number' || parsed.corretta < 0 || parsed.corretta > 3 ||
+            !PUNTI_PER_DIFFICOLTA[parsed.difficolta]) {
             console.error('[ERRORE QUIZ - formato non valido]:', testo);
             return null;
         }
@@ -91,11 +95,15 @@ module.exports = {
                 .map((opz, i) => `**${LETTERE[i]}.** ${opz}`)
                 .join('\n');
 
+            const emojiDifficolta = { facile: '🟢', medio: '🟡', difficile: '🔴' }[domanda.difficolta];
+
             const embed = new EmbedBuilder()
                 .setColor(0xFEE75C)
                 .setTitle('🧠 Quiz di cultura generale')
                 .setDescription(`${domanda.domanda}\n\n${listaOpzioni}`)
-                .setFooter({ text: `Rispondi con una lettera (A-D) — hai ${TEMPO_LIMITE_MS / 1000} secondi!` });
+                .setFooter({
+                    text: `${emojiDifficolta} ${domanda.difficolta.toUpperCase()} (vale ${PUNTI_PER_DIFFICOLTA[domanda.difficolta]} punti) — Rispondi con una lettera (A-D), hai ${TEMPO_LIMITE_MS / 1000} secondi!`
+                });
 
             await message.channel.send({ embeds: [embed] });
 
@@ -110,6 +118,7 @@ module.exports = {
             guildStore.quizAttivi.set(message.channelId, {
                 corretta: domanda.corretta,
                 opzioni: domanda.opzioni,
+                difficolta: domanda.difficolta,
                 timer
             });
 
@@ -121,7 +130,7 @@ module.exports = {
             try {
                 const classifica = await QuizScore
                     .find({ guildId: message.guildId })
-                    .sort({ vittorie: -1 })
+                    .sort({ punti: -1 })
                     .limit(10);
 
                 if (classifica.length === 0) {
@@ -134,7 +143,7 @@ module.exports = {
                         const membro = await message.guild.members.fetch(voce.userId).catch(() => null);
                         const nome = membro ? membro.displayName : 'Utente sconosciuto';
                         const medaglia = ['🥇', '🥈', '🥉'][i] || `${i + 1}.`;
-                        return `${medaglia} **${nome}** — ${voce.vittorie} vittorie`;
+                        return `${medaglia} **${nome}** — ${voce.punti} punti (${voce.vittorie} vittorie)`;
                     })
                 );
 
@@ -167,15 +176,16 @@ module.exports = {
             guildStore.quizAttivi.delete(message.channelId);
 
             try {
+                const punti = PUNTI_PER_DIFFICOLTA[quiz.difficolta];
                 const aggiornato = await QuizScore.findOneAndUpdate(
                     { guildId: message.guildId, userId: message.author.id },
-                    { $inc: { vittorie: 1 } },
+                    { $inc: { vittorie: 1, punti } },
                     { upsert: true, new: true }
                 );
 
                 await message.reply(
                     `🎉 **Esatto!** La risposta era **${LETTERE[quiz.corretta]}. ${quiz.opzioni[quiz.corretta]}**. ` +
-                    `Ora hai **${aggiornato.vittorie}** vittorie totali!`
+                    `+${punti} punti (${quiz.difficolta}) — ora hai **${aggiornato.punti}** punti totali (${aggiornato.vittorie} vittorie)!`
                 );
             } catch (err) {
                 console.error('[ERRORE QUIZ - salvataggio vittoria]:', err.message);
