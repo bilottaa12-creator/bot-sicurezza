@@ -121,6 +121,7 @@ module.exports = {
                 corretta: domanda.corretta,
                 opzioni: domanda.opzioni,
                 difficolta: domanda.difficolta,
+                tentativiFalliti: new Set(),
                 timer
             });
 
@@ -170,9 +171,17 @@ module.exports = {
             if (!rispostaData) return false; // non è una risposta valida, ignora (lascia passare ad altri plugin)
 
             const quiz = guildStore.quizAttivi.get(message.channelId);
+
+            // Un solo tentativo a testa per domanda: chi ha già sbagliato non può riprovare
+            // (evita l'exploit di mandare tutte le lettere una dietro l'altra)
+            if (quiz.tentativiFalliti.has(message.author.id)) return false;
+
             const indiceRisposta = LETTERE.indexOf(rispostaData);
 
-            if (indiceRisposta !== quiz.corretta) return false; // risposta sbagliata, il quiz resta attivo
+            if (indiceRisposta !== quiz.corretta) {
+                quiz.tentativiFalliti.add(message.author.id);
+                return false; // risposta sbagliata, il quiz resta attivo per gli altri
+            }
 
             clearTimeout(quiz.timer);
             guildStore.quizAttivi.delete(message.channelId);
