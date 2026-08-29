@@ -1,3 +1,4 @@
+
 const { EmbedBuilder } = require('discord.js');
 const { QuizScore } = require('../db');
 
@@ -191,7 +192,7 @@ module.exports = {
                 const aggiornato = await QuizScore.findOneAndUpdate(
                     { guildId: message.guildId, userId: message.author.id },
                     { $inc: { vittorie: 1, punti } },
-                    { upsert: true, new: true }
+                    { upsert: true, returnDocument: 'after' }
                 );
 
                 await message.reply(
