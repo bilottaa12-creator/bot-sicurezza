@@ -1,4 +1,3 @@
-
 const { EmbedBuilder } = require('discord.js');
 const { QuizScore } = require('../db');
 
@@ -9,6 +8,20 @@ const PUNTI_PER_DIFFICOLTA = { facile: 1, medio: 2, difficile: 3 };
 function getGuildStore(store, guildId) {
     if (!store[guildId]) store[guildId] = {};
     return store[guildId];
+}
+
+function mescolaOpzioni(domanda) {
+    const conIndice = domanda.opzioni.map((opz, i) => ({ opz, eraCorretta: i === domanda.corretta }));
+
+    // Fisher-Yates shuffle
+    for (let i = conIndice.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [conIndice[i], conIndice[j]] = [conIndice[j], conIndice[i]];
+    }
+
+    domanda.opzioni = conIndice.map(o => o.opz);
+    domanda.corretta = conIndice.findIndex(o => o.eraCorretta);
+    return domanda;
 }
 
 async function generaDomandaAI() {
@@ -63,7 +76,7 @@ async function generaDomandaAI() {
             return null;
         }
 
-        return parsed;
+        return mescolaOpzioni(parsed);
 
     } catch (err) {
         console.error('[ERRORE QUIZ - generazione]:', err.message);
