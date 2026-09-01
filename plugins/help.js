@@ -47,7 +47,9 @@ module.exports = {
                     value:
                         '`!server` → Statistiche del server (membri, canali, boost, ecc.) (alias `!serverinfo`)\n' +
                         '`!top` → Classifica dei membri più attivi per messaggi (alias `!classifica`)\n' +
-                        '`!rank [@utente]` → La tua posizione in classifica (o quella di qualcun altro)'
+                        '`!rank [@utente]` → La tua posizione in classifica (o quella di qualcun altro)\n' +
+                        '`!afk [motivo]` → Ti segna come assente, risponde per te a chi ti tagga\n' +
+                        '`!sondaggio [durata] <domanda> [| opzione1 | opzione2...]` → Sondaggio con reazioni, risultati automatici (default 1min, es. `5m`)'
                 }
             )
             .setFooter({ text: 'Solo mod/admin possono usare i comandi di sicurezza' });
