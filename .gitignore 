@@ -1,9 +1,9 @@
-# File con dati sensibili
-.env
-.env.local
-.env.*.local
+# Python cache
+__pycache__/
+*.py[cod]
+*.so
 
-# Database
+# Database locali
 *.db
 *.sqlite
 *.sqlite3
@@ -12,19 +12,11 @@
 logs/
 *.log
 
-# Python
-__pycache__/
-*.py[cod]
-*.so
-.Python
-venv/
-env/
-ENV/
-*.egg-info/
-.installed.cfg
+# File .env (se mai ne creo uno locale)
+.env
+.env.local
 
 # IDE
 .vscode/
 .idea/
 .DS_Store
-*.swp
