@@ -56,4 +56,14 @@ quizScoreSchema.index({ guildId: 1, userId: 1 }, { unique: true });
 
 const QuizScore = mongoose.model('QuizScore', quizScoreSchema);
 
-module.exports = { connectDB, MessageCount, Warning, GuildSettings, QuizScore };
+// Punteggi del mini-CTF di decifratura (!ctf)
+const ctfScoreSchema = new mongoose.Schema({
+    guildId: { type: String, required: true },
+    userId: { type: String, required: true },
+    vittorie: { type: Number, default: 0 }
+});
+ctfScoreSchema.index({ guildId: 1, userId: 1 }, { unique: true });
+
+const CtfScore = mongoose.model('CtfScore', ctfScoreSchema);
+
+module.exports = { connectDB, MessageCount, Warning, GuildSettings, QuizScore, CtfScore };
