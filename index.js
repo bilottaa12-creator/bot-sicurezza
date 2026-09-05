@@ -1,16 +1,47 @@
-// Server HTTP per mantenere attivo il servizio su Render
+// ============================================
+// SERVER HTTP PER RENDER
+// ============================================
 const http = require('http');
 http.createServer((req, res) => res.end('Scudo Anti-Raid Online!')).listen(process.env.PORT || 10000);
 
+// ============================================
+// IMPORTAZIONI
+// ============================================
 const fs = require('fs');
 const path = require('path');
 const { Client, GatewayIntentBits, Partials } = require('discord.js');
 const { connectDB } = require('./db');
+const logger = require('./utils/logger');
 
-console.log('🔄 Avvio del bot in corso...');
+// ============================================
+// CONFIGURAZIONE
+// ============================================
+const TOKEN = process.env.DISCORD_TOKEN;
+const PLUGINS_DIR = path.join(__dirname, 'plugins');
 
-connectDB();
+// ============================================
+// VALIDAZIONE INIZIALE
+// ============================================
+if (!TOKEN) {
+    logger.error('Variabile DISCORD_TOKEN non trovata. Verificare le impostazioni su Render.');
+    process.exit(1);
+}
 
+// ============================================
+// CONNESSIONE DATABASE
+// ============================================
+logger.info('Connessione al database...');
+try {
+    connectDB();
+    logger.info('Database connesso con successo.');
+} catch (err) {
+    logger.error(`Errore connessione database: ${err.message}`);
+    process.exit(1);
+}
+
+// ============================================
+// CREAZIONE CLIENT DISCORD
+// ============================================
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -26,91 +57,172 @@ const client = new Client({
     ]
 });
 
-const TOKEN = process.env.DISCORD_TOKEN;
-
-if (!TOKEN) {
-    console.error('❌ ERRORE: La variabile DISCORD_TOKEN non è stata trovata su Render!');
-} else {
-    console.log('🔑 Token trovato, tentativo di connessione a Discord...');
-}
-
-// Caricamento dello Stato Condiviso
+// ============================================
+// STATO CONDIVISO
+// ============================================
 const store = {};
 
-// Carica TUTTI i plugin dalla cartella plugins/
-const plugins = [];
-const pluginsDir = path.join(__dirname, 'plugins');
+// ============================================
+// CARICAMENTO PLUGIN
+// ============================================
+function loadPlugins() {
+    const plugins = [];
+    
+    if (!fs.existsSync(PLUGINS_DIR)) {
+        logger.warn('Cartella plugins non trovata. Creazione...');
+        fs.mkdirSync(PLUGINS_DIR, { recursive: true });
+        return plugins;
+    }
 
-if (fs.existsSync(pluginsDir)) {
-    fs.readdirSync(pluginsDir)
-        .filter(file => file.endsWith('.js'))
-        .forEach(file => {
-            try {
-                const plugin = require(path.join(pluginsDir, file));
-                plugins.push(plugin);
-                console.log(`🧩 Plugin caricato: ${file}`);
-            } catch (err) {
-                console.error(`❌ Errore nel caricamento del plugin ${file}:`, err.message);
+    const pluginFiles = fs.readdirSync(PLUGINS_DIR)
+        .filter(file => file.endsWith('.js'));
+
+    if (pluginFiles.length === 0) {
+        logger.warn('Nessun plugin trovato nella cartella plugins/.');
+        return plugins;
+    }
+
+    for (const file of pluginFiles) {
+        const pluginPath = path.join(PLUGINS_DIR, file);
+        const startTime = Date.now();
+
+        try {
+            const plugin = require(pluginPath);
+
+            // Validazione struttura plugin
+            if (!plugin || typeof plugin !== 'object') {
+                logger.warn(`Plugin ${file} ignorato: export non valido.`);
+                continue;
             }
-        });
-}
 
-// Event: messageCreate - smista ai plugin
-client.on('messageCreate', async (message) => {
-    if (message.author.id === client.user.id) return;
+            if (!plugin.name) {
+                logger.warn(`Plugin ${file} ignorato: manca la proprietà "name".`);
+                continue;
+            }
 
-    for (const plugin of plugins) {
-        if (plugin.onMessage) {
-            try {
-                const shouldReturn = await plugin.onMessage(message, { store, client });
-                if (shouldReturn === true) break;
-            } catch (err) {
-                console.error(`Errore in plugin ${plugin.name}:`, err.message);
+            // Verifica che abbia almeno una funzione handler
+            const hasHandler = ['onMessage', 'onAuditLogEntry', 'onMemberAdd', 'onReady']
+                .some(method => typeof plugin[method] === 'function');
+
+            if (!hasHandler) {
+                logger.warn(`Plugin ${file} ignorato: nessun handler valido trovato.`);
+                continue;
+            }
+
+            plugins.push(plugin);
+            
+            const loadTime = Date.now() - startTime;
+            logger.info(`Plugin "${plugin.name}" caricato (${loadTime}ms)`);
+
+        } catch (err) {
+            logger.error(`Errore caricamento plugin ${file}: ${err.message}`);
+            if (err.stack) {
+                logger.debug(err.stack);
             }
         }
     }
+
+    return plugins;
+}
+
+const plugins = loadPlugins();
+logger.info(`Totale plugin caricati: ${plugins.length}`);
+
+// ============================================
+// HELPER PER ESECUZIONE SICURA DEI PLUGIN
+// ============================================
+async function executePluginMethod(plugins, methodName, args) {
+    for (const plugin of plugins) {
+        if (typeof plugin[methodName] !== 'function') continue;
+
+        try {
+            const result = await plugin[methodName](...args);
+            
+            // Se il plugin ritorna true, interrompe l'esecuzione degli altri
+            if (result === true) {
+                logger.debug(`Plugin "${plugin.name}" ha interrotto la catena.`);
+                break;
+            }
+        } catch (err) {
+            logger.error(`Errore nel plugin "${plugin.name}" (${methodName}): ${err.message}`);
+            if (err.stack) {
+                logger.debug(err.stack);
+            }
+        }
+    }
+}
+
+// ============================================
+// GESTIONE EVENTI
+// ============================================
+
+// Event: messageCreate
+client.on('messageCreate', async (message) => {
+    if (message.author.id === client.user.id) return;
+    await executePluginMethod(plugins, 'onMessage', [message, { store, client }]);
 });
-
-
 
 // Event: guildAuditLogEntryCreate
 client.on('guildAuditLogEntryCreate', async (entry, guild) => {
-    for (const plugin of plugins) {
-        if (plugin.onAuditLogEntry) {
-            try {
-                await plugin.onAuditLogEntry(entry, guild, { store, client });
-            } catch (err) {
-                console.error(`Errore in plugin ${plugin.name} (audit log):`, err.message);
-            }
-        }
-    }
+    await executePluginMethod(plugins, 'onAuditLogEntry', [entry, guild, { store, client }]);
 });
 
-// Event: guildMemberAdd - qualcuno è entrato nel server
+// Event: guildMemberAdd
 client.on('guildMemberAdd', async (member) => {
-    for (const plugin of plugins) {
-        if (plugin.onMemberAdd) {
-            try {
-                await plugin.onMemberAdd(member, { store, client });
-            } catch (err) {
-                console.error(`Errore in plugin ${plugin.name} (member add):`, err.message);
-            }
-        }
+    await executePluginMethod(plugins, 'onMemberAdd', [member, { store, client }]);
+});
+
+// Event: ready
+client.on('ready', () => {
+    logger.info(`Bot online come ${client.user.tag}`);
+    logger.info(`Server serviti: ${client.guilds.cache.size}`);
+    logger.info(`Plugin attivi: ${plugins.length}`);
+    
+    // Esegue eventuali handler onReady nei plugin
+    executePluginMethod(plugins, 'onReady', [{ store, client }]);
+});
+
+// ============================================
+// GESTIONE ERRORI GLOBALE
+// ============================================
+client.on('debug', (info) => logger.debug(info));
+client.on('warn', (warning) => logger.warn(warning));
+client.on('error', (err) => logger.error(`Errore client Discord: ${err.message}`));
+
+process.on('unhandledRejection', (reason, promise) => {
+    logger.error(`Promise non gestita: ${reason}`);
+    if (reason && reason.stack) {
+        logger.debug(reason.stack);
     }
 });
 
-// Event: ready - bot online
-client.on('ready', () => {
-    console.log(`✅ DISCORD CONNESSO! Online come ${client.user.tag} (${plugins.length} plugin attivi)`);
+process.on('uncaughtException', (err) => {
+    logger.error(`Eccezione non catturata: ${err.message}`);
+    if (err.stack) {
+        logger.debug(err.stack);
+    }
+    // Non uscire dal processo per evitare downtime su Render
 });
 
-// Debug e Gestione Errori di Connessione
-client.on('debug', (info) => console.log(`🔍 [DEBUG]: ${info}`));
-client.on('warn', (warning) => console.log(`⚠️ [WARN]: ${warning}`));
-client.on('error', (err) => console.error('❌ Errore Client Discord:', err));
-process.on('unhandledRejection', (reason) => console.error('❌ Errore Non Gestito:', reason));
+// ============================================
+// AVVIO DEL BOT
+// ============================================
+logger.info('Tentativo di connessione a Discord...');
 
-// Login con cattura degli errori
 client.login(TOKEN).catch(err => {
-    console.error('❌ ERRORE CRITICO DURANTE IL LOGIN:', err.message);
+    logger.error(`Errore critico durante il login: ${err.message}`);
+    process.exit(1);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+    logger.info('Ricevuto SIGTERM, chiusura in corso...');
+    client.destroy();
+    process.exit(0);
+});
+
+process.on('SIGINT', () => {
+    logger.info('Ricevuto SIGINT, chiusura in corso...');
+    client.destroy();
+    process.exit(0);
 });
