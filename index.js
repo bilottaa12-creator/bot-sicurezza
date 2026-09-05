@@ -23,19 +23,19 @@ const PLUGINS_DIR = path.join(__dirname, 'plugins');
 // VALIDAZIONE INIZIALE
 // ============================================
 if (!TOKEN) {
-    logger.error('Variabile DISCORD_TOKEN non trovata. Verificare le impostazioni su Render.');
+    console.error('❌ Variabile DISCORD_TOKEN non trovata. Verificare le impostazioni su Render.');
     process.exit(1);
 }
 
 // ============================================
 // CONNESSIONE DATABASE
 // ============================================
-logger.info('Connessione al database...');
+console.log('✅ Connessione al database...');
 try {
     connectDB();
-    logger.info('Database connesso con successo.');
+    console.log('✅ Database connesso con successo.');
 } catch (err) {
-    logger.error(`Errore connessione database: ${err.message}`);
+    console.error(`❌ Errore connessione database: ${err.message}`);
     process.exit(1);
 }
 
@@ -69,7 +69,7 @@ function loadPlugins() {
     const plugins = [];
     
     if (!fs.existsSync(PLUGINS_DIR)) {
-        logger.warn('Cartella plugins non trovata. Creazione...');
+        console.warn('⚠️ Cartella plugins non trovata. Creazione...');
         fs.mkdirSync(PLUGINS_DIR, { recursive: true });
         return plugins;
     }
@@ -78,7 +78,7 @@ function loadPlugins() {
         .filter(file => file.endsWith('.js'));
 
     if (pluginFiles.length === 0) {
-        logger.warn('Nessun plugin trovato nella cartella plugins/.');
+        console.warn('⚠️ Nessun plugin trovato nella cartella plugins/.');
         return plugins;
     }
 
@@ -91,12 +91,12 @@ function loadPlugins() {
 
             // Validazione struttura plugin
             if (!plugin || typeof plugin !== 'object') {
-                logger.warn(`Plugin ${file} ignorato: export non valido.`);
+                console.warn(`⚠️ Plugin ${file} ignorato: export non valido.`);
                 continue;
             }
 
             if (!plugin.name) {
-                logger.warn(`Plugin ${file} ignorato: manca la proprietà "name".`);
+                console.warn(`⚠️ Plugin ${file} ignorato: manca la proprietà "name".`);
                 continue;
             }
 
@@ -105,19 +105,19 @@ function loadPlugins() {
                 .some(method => typeof plugin[method] === 'function');
 
             if (!hasHandler) {
-                logger.warn(`Plugin ${file} ignorato: nessun handler valido trovato.`);
+                console.warn(`⚠️ Plugin ${file} ignorato: nessun handler valido trovato.`);
                 continue;
             }
 
             plugins.push(plugin);
             
             const loadTime = Date.now() - startTime;
-            logger.info(`Plugin "${plugin.name}" caricato (${loadTime}ms)`);
+            console.log(`✅ Plugin "${plugin.name}" caricato (${loadTime}ms)`);
 
         } catch (err) {
-            logger.error(`Errore caricamento plugin ${file}: ${err.message}`);
+            console.error(`❌ Errore caricamento plugin ${file}: ${err.message}`);
             if (err.stack) {
-                logger.debug(err.stack);
+                console.error(err.stack);
             }
         }
     }
@@ -126,7 +126,7 @@ function loadPlugins() {
 }
 
 const plugins = loadPlugins();
-logger.info(`Totale plugin caricati: ${plugins.length}`);
+console.log(`✅ Totale plugin caricati: ${plugins.length}`);
 
 // ============================================
 // HELPER PER ESECUZIONE SICURA DEI PLUGIN
@@ -140,13 +140,13 @@ async function executePluginMethod(plugins, methodName, args) {
             
             // Se il plugin ritorna true, interrompe l'esecuzione degli altri
             if (result === true) {
-                logger.debug(`Plugin "${plugin.name}" ha interrotto la catena.`);
+                console.log(`🔍 Plugin "${plugin.name}" ha interrotto la catena.`);
                 break;
             }
         } catch (err) {
-            logger.error(`Errore nel plugin "${plugin.name}" (${methodName}): ${err.message}`);
+            console.error(`❌ Errore nel plugin "${plugin.name}" (${methodName}): ${err.message}`);
             if (err.stack) {
-                logger.debug(err.stack);
+                console.error(err.stack);
             }
         }
     }
@@ -174,9 +174,9 @@ client.on('guildMemberAdd', async (member) => {
 
 // Event: ready
 client.on('ready', () => {
-    logger.info(`Bot online come ${client.user.tag}`);
-    logger.info(`Server serviti: ${client.guilds.cache.size}`);
-    logger.info(`Plugin attivi: ${plugins.length}`);
+    console.log(`✅ Bot online come ${client.user.tag}`);
+    console.log(`✅ Server serviti: ${client.guilds.cache.size}`);
+    console.log(`✅ Plugin attivi: ${plugins.length}`);
     
     // Esegue eventuali handler onReady nei plugin
     executePluginMethod(plugins, 'onReady', [{ store, client }]);
@@ -185,21 +185,21 @@ client.on('ready', () => {
 // ============================================
 // GESTIONE ERRORI GLOBALE
 // ============================================
-client.on('debug', (info) => logger.debug(info));
-client.on('warn', (warning) => logger.warn(warning));
-client.on('error', (err) => logger.error(`Errore client Discord: ${err.message}`));
+client.on('debug', (info) => console.log(`🔍 ${info}`));
+client.on('warn', (warning) => console.warn(`⚠️ ${warning}`));
+client.on('error', (err) => console.error(`❌ Errore client Discord: ${err.message}`));
 
 process.on('unhandledRejection', (reason, promise) => {
-    logger.error(`Promise non gestita: ${reason}`);
+    console.error(`❌ Promise non gestita: ${reason}`);
     if (reason && reason.stack) {
-        logger.debug(reason.stack);
+        console.error(reason.stack);
     }
 });
 
 process.on('uncaughtException', (err) => {
-    logger.error(`Eccezione non catturata: ${err.message}`);
+    console.error(`❌ Eccezione non catturata: ${err.message}`);
     if (err.stack) {
-        logger.debug(err.stack);
+        console.error(err.stack);
     }
     // Non uscire dal processo per evitare downtime su Render
 });
@@ -207,22 +207,22 @@ process.on('uncaughtException', (err) => {
 // ============================================
 // AVVIO DEL BOT
 // ============================================
-logger.info('Tentativo di connessione a Discord...');
+console.log('✅ Tentativo di connessione a Discord...');
 
 client.login(TOKEN).catch(err => {
-    logger.error(`Errore critico durante il login: ${err.message}`);
+    console.error(`❌ Errore critico durante il login: ${err.message}`);
     process.exit(1);
 });
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
-    logger.info('Ricevuto SIGTERM, chiusura in corso...');
+    console.log('✅ Ricevuto SIGTERM, chiusura in corso...');
     client.destroy();
     process.exit(0);
 });
 
 process.on('SIGINT', () => {
-    logger.info('Ricevuto SIGINT, chiusura in corso...');
+    console.log('✅ Ricevuto SIGINT, chiusura in corso...');
     client.destroy();
     process.exit(0);
 });
