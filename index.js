@@ -30,14 +30,7 @@ if (!TOKEN) {
 // ============================================
 // CONNESSIONE DATABASE
 // ============================================
-console.log('✅ Connessione al database...');
-try {
-    connectDB();
-    console.log('✅ Database connesso con successo.');
-} catch (err) {
-    console.error(`❌ Errore connessione database: ${err.message}`);
-    process.exit(1);
-}
+connectDB();
 
 // ============================================
 // CREAZIONE CLIENT DISCORD
