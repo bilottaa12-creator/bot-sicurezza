@@ -36,7 +36,8 @@ module.exports = {
                         '`!parla` / `!parla-off` → Modalità frasi assurde generate dall\'AI\n' +
                         '`!duello @utente` → Sfida assurda generata dall\'AI, vince a caso\n' +
                         '`!palla <domanda>` → Palla magica, risponde sì/no/forse (alias `!8ball`)\n' +
-                        '`!quiz` → Quiz di cultura generale (30s per rispondere), `!quizrank` per la classifica'
+                        '`!quiz` → Quiz di cultura generale (30s per rispondere), `!quizrank` per la classifica\n' +
+                        '`!ctf` → Decifra la parola nascosta (ROT13/Base64/Cesare/hex/binario), `!ctfrank` per la classifica'
                 },
                 {
                     name: '🤖 — INTELLIGENZA ARTIFICIALE —',
