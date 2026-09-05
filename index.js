@@ -11,7 +11,7 @@ const fs = require('fs');
 const path = require('path');
 const { Client, GatewayIntentBits, Partials } = require('discord.js');
 const { connectDB } = require('./db');
-const logger = require('./utils/logger');
+const logger = require('./utils');
 
 // ============================================
 // CONFIGURAZIONE
